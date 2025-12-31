@@ -1,0 +1,60 @@
+# .gitignore - Sistema Colegio de Sociólogos
+
+.env
+
+# Archivos subidos por usuarios
+/public/uploads/*
+!/public/uploads/.gitkeep
+/public/uploads/fotos/*
+!/public/uploads/fotos/.gitkeep
+/public/uploads/comprobantes/*
+!/public/uploads/comprobantes/.gitkeep
+/public/uploads/documentos/*
+!/public/uploads/documentos/.gitkeep
+/public/uploads/temp/*
+!/public/uploads/temp/.gitkeep
+
+# Logs del sistema
+/storage/logs/*
+!/storage/logs/.gitkeep
+
+# Reportes exportados
+/storage/exports/*
+!/storage/exports/.gitkeep
+
+# Caché
+/storage/cache/*
+!/storage/cache/.gitkeep
+
+# Dependencias de Composer
+/vendor/
+composer.lock
+
+# Sistema operativo
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDEs y editores
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+.phpintel/
+*.swp
+*.swo
+*~
+
+# Archivos temporales de PHP
+*.tmp
+*.bak
+*.cache
+
+# Configuraciones locales
+config/database.php.local
