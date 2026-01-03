@@ -33,7 +33,7 @@
                 
                 <a class="navbar-brand" href="<?php echo url('dashboard'); ?>">
                     <i class="fas fa-university"></i>
-                    SIAD 1.0
+                    <?php echo env('APP_NAME_MOVIL'); ?>
                 </a>
             </div>
             
