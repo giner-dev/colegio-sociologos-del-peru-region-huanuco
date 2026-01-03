@@ -3,7 +3,6 @@
 .env
 
 # Archivos subidos por usuarios
-/public/uploads/*
 !/public/uploads/.gitkeep
 /public/uploads/fotos/*
 !/public/uploads/fotos/.gitkeep

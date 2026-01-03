@@ -15,6 +15,7 @@ class DashboardController extends Controller{
         // Renderizar vista
         $this->render('dashboard/index',[
             'estadisticas' => $estadisticas,
+            'active_menu' => 'dashboard', // Para que se active
             'titulo' => 'Dashboard'
         ]);
     }
