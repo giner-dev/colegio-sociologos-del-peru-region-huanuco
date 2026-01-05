@@ -19,7 +19,7 @@
 
 <!-- Formulario de búsqueda -->
 <div class="card mb-4">
-    <div class="card-header" style="background: linear-gradient(135deg, #B91D22, #8a1519); color: white;">
+    <div class="card-header bg-search">
         <i class="fas fa-search me-2"></i> Búsqueda de Colegiados
     </div>
     <div class="card-body">
@@ -72,7 +72,7 @@
 
 <!-- Tabla de resultados -->
 <div class="card">
-    <div class="card-header" style="background-color: #f8f9fa;">
+    <div class="card-header bg-results">
         <i class="fas fa-list me-2"></i> 
         Resultados: <strong><?php echo count($colegiados); ?></strong> colegiado(s)
     </div>
@@ -93,7 +93,7 @@
                 <tbody>
                     <?php if (empty($colegiados)): ?>
                         <tr>
-                            <td colspan="7" class="text-center text-muted" style="padding: 40px;">
+                            <td colspan="7" class="text-center text-muted">
                                 <i class="fas fa-info-circle me-2"></i>
                                 No se encontraron colegiados
                             </td>
@@ -101,12 +101,14 @@
                     <?php else: ?>
                         <?php foreach ($colegiados as $colegiado): ?>
                             <tr>
-                                <td><strong><?php echo e($colegiado->numero_colegiatura); ?></strong></td>
-                                <td><?php echo e($colegiado->dni); ?></td>
-                                <td><?php echo e($colegiado->getNombreCompleto()); ?></td>
-                                <td><?php echo e($colegiado->telefono ?: '-'); ?></td>
-                                <td><?php echo e($colegiado->correo ?: '-'); ?></td>
-                                <td>
+                                <td data-label="N° Colegiatura">
+                                    <strong><?php echo e($colegiado->numero_colegiatura); ?></strong>
+                                </td>
+                                <td data-label="DNI"><?php echo e($colegiado->dni); ?></td>
+                                <td data-label="Apellidos y Nombres"><?php echo e($colegiado->getNombreCompleto()); ?></td>
+                                <td data-label="Teléfono"><?php echo e($colegiado->telefono ?: '-'); ?></td>
+                                <td data-label="Correo"><?php echo e($colegiado->correo ?: '-'); ?></td>
+                                <td data-label="Estado">
                                     <?php if ($colegiado->estado === 'habilitado'): ?>
                                         <span class="badge badge-habilitado">
                                             <i class="fas fa-check-circle"></i> Habilitado
@@ -117,7 +119,7 @@
                                         </span>
                                     <?php endif; ?>
                                 </td>
-                                <td class="text-center">
+                                <td class="text-center" data-label="Acciones">
                                     <a href="<?php echo url('colegiados/ver/' . $colegiado->idColegiados); ?>" 
                                        class="btn btn-sm btn-info" title="Ver detalles">
                                         <i class="fas fa-eye"></i>

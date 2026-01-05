@@ -1,6 +1,6 @@
 <div class="page-header">
     <h2>
-        <i class="fas fa-check-circle me-2" style="color: #B91D22;"></i>
+        <i class="fas fa-check-circle me-2"></i>
         Resultado de Importación
     </h2>
 </div>
@@ -8,13 +8,13 @@
 <!-- Estadísticas -->
 <div class="row mb-4">
     <div class="col-md-6">
-        <div class="stat-box" style="background: linear-gradient(135deg, #28a745, #218838);">
+        <div class="stat-box stat-box-success">
             <div class="number"><?php echo $resultado['importados']; ?></div>
             <div class="label">Registros Importados</div>
         </div>
     </div>
     <div class="col-md-6">
-        <div class="stat-box" style="background: linear-gradient(135deg, #ffc107, #e0a800);">
+        <div class="stat-box stat-box-warning">
             <div class="number"><?php echo $resultado['omitidos']; ?></div>
             <div class="label">Registros Omitidos</div>
         </div>
@@ -24,7 +24,7 @@
 <!-- Errores -->
 <?php if (!empty($resultado['errores'])): ?>
 <div class="card mb-4">
-    <div class="card-header bg-danger text-white">
+    <div class="card-header bg-danger">
         <i class="fas fa-exclamation-circle me-2"></i>
         Errores Encontrados (<?php echo count($resultado['errores']); ?>)
     </div>
@@ -47,7 +47,7 @@
 <!-- Advertencias -->
 <?php if (!empty($resultado['advertencias'])): ?>
 <div class="card mb-4">
-    <div class="card-header bg-warning text-dark">
+    <div class="card-header bg-warning">
         <i class="fas fa-exclamation-triangle me-2"></i>
         Advertencias (<?php echo count($resultado['advertencias']); ?>)
     </div>

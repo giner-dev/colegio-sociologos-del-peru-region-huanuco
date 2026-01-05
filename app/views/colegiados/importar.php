@@ -1,7 +1,7 @@
 <div class="page-header">
     <div class="d-flex justify-content-between align-items-center">
         <h2>
-            <i class="fas fa-file-excel me-2" style="color: #B91D22;"></i>
+            <i class="fas fa-file-excel me-2"></i>
             Importar Colegiados desde Excel
         </h2>
         <a href="<?php echo url('colegiados'); ?>" class="btn btn-secondary">
@@ -13,7 +13,7 @@
 <!-- Instrucciones -->
 <div class="alert alert-info">
     <h5 class="alert-heading">
-        <i class="fas fa-info-circle me-2"></i> Instrucciones
+        <i class="fas fa-info-circle"></i> Instrucciones
     </h5>
     <ul class="mb-0">
         <li>El archivo debe estar en formato Excel (.xlsx o .xls)</li>
@@ -26,7 +26,7 @@
 
 <!-- Plantilla de ejemplo -->
 <div class="card mb-4">
-    <div class="card-header" style="background-color: #B91D22; color: white;">
+    <div class="card-header bg-search">
         <i class="fas fa-download me-2"></i> Plantilla de Ejemplo
     </div>
     <div class="card-body">
@@ -39,13 +39,13 @@
 
 <!-- Formulario de carga -->
 <div class="card">
-    <div class="card-header" style="background-color: #B91D22; color: white;">
+    <div class="card-header bg-search">
         <i class="fas fa-upload me-2"></i> Cargar Archivo
     </div>
     <div class="card-body">
         <form method="POST" action="<?php echo url('colegiados/procesar-excel'); ?>" enctype="multipart/form-data" id="formImportar">
             <div class="upload-zone" id="uploadZone">
-                <i class="fas fa-cloud-upload-alt fa-4x mb-3" style="color: #B91D22;"></i>
+                <i class="fas fa-cloud-upload-alt fa-4x mb-3"></i>
                 <h5>Arrastra tu archivo Excel aquí</h5>
                 <p class="text-muted">o haz clic para seleccionar</p>
                 <input type="file" name="archivo_excel" id="archivoExcel" accept=".xlsx,.xls" class="d-none" required>

@@ -11,14 +11,8 @@
     <!-- CSS -->
     <link rel="stylesheet" href="<?php echo url('assets/css/main.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/dashboard.css'); ?>">
-    <link rel="stylesheet" href="<?php echo url('assets/css/colegiados.css?v2'); ?>">
+    <link rel="stylesheet" href="<?php echo url('assets/css/colegiados.css'); ?>">
     
-    <!-- CSS Adicionales según la página -->
-    <?php if (isset($extra_css)): ?>
-        <?php foreach ($extra_css as $css): ?>
-            <link rel="stylesheet" href="<?php echo url($css); ?>">
-        <?php endforeach; ?>
-    <?php endif; ?>
 </head>
 <body>
     <!-- Navbar -->

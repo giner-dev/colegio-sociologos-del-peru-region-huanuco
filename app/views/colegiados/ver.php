@@ -1,7 +1,7 @@
 <div class="page-header">
     <div class="d-flex justify-content-between align-items-center">
         <h2>
-            <i class="fas fa-user me-2" style="color: #B91D22;"></i>
+            <i class="fas fa-user me-2"></i>
             Información del Colegiado
         </h2>
         <div>
@@ -19,7 +19,7 @@
 
 <!-- Información Personal -->
 <div class="card mb-4">
-    <div class="card-header" style="background: linear-gradient(135deg, #B91D22, #8a1519); color: white;">
+    <div class="card-header bg-search">
         <i class="fas fa-id-card me-2"></i> Datos Personales
     </div>
     <div class="card-body">
@@ -122,7 +122,7 @@
 <!-- Cambiar Estado -->
 <?php if (hasRole('administrador')): ?>
 <div class="card mb-4">
-    <div class="card-header" style="background: linear-gradient(135deg, #B91D22, #8a1519); color: white;">
+    <div class="card-header bg-search">
         <i class="fas fa-exchange-alt me-2"></i> Cambiar Estado del Colegiado
     </div>
     <div class="card-body">
@@ -157,7 +157,7 @@
 
 <!-- Historial de Pagos -->
 <div class="card mb-4">
-    <div class="card-header bg-success" style="color: white;">
+    <div class="card-header bg-success">
         <i class="fas fa-money-bill-wave me-2"></i> Historial de Pagos
     </div>
     <div class="card-body">
@@ -176,15 +176,15 @@
                     <tbody>
                         <?php foreach ($historial_pagos as $pago): ?>
                             <tr>
-                                <td><?php echo formatDate($pago['fecha_pago']); ?></td>
-                                <td><?php echo e($pago['concepto_nombre'] ?: $pago['concepto_texto']); ?></td>
-                                <td><strong><?php echo formatMoney($pago['monto']); ?></strong></td>
-                                <td>
+                                <td data-label="Fecha"><?php echo formatDate($pago['fecha_pago']); ?></td>
+                                <td data-label="Concepto"><?php echo e($pago['concepto_nombre'] ?: $pago['concepto_texto']); ?></td>
+                                <td data-label="Monto"><strong><?php echo formatMoney($pago['monto']); ?></strong></td>
+                                <td data-label="Método">
                                     <span class="badge bg-info">
                                         <?php echo ucfirst(e($pago['metodo_pago_id'])); ?>
                                     </span>
                                 </td>
-                                <td><?php echo e($pago['nombre_usuario']); ?></td>
+                                <td data-label="Registrado por"><?php echo e($pago['nombre_usuario']); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -201,7 +201,7 @@
 
 <!-- Deudas Pendientes -->
 <div class="card mb-4">
-    <div class="card-header bg-danger" style="color: white;">
+    <div class="card-header bg-danger">
         <i class="fas fa-exclamation-triangle me-2"></i> Deudas Pendientes
     </div>
     <div class="card-body">
@@ -225,10 +225,10 @@
                             }
                         ?>
                             <tr>
-                                <td><?php echo e($deuda['concepto']); ?></td>
-                                <td><strong><?php echo formatMoney($deuda['monto']); ?></strong></td>
-                                <td><?php echo formatDate($deuda['fecha_vencimiento']); ?></td>
-                                <td>
+                                <td data-label="Concepto"><?php echo e($deuda['concepto']); ?></td>
+                                <td data-label="Monto"><strong><?php echo formatMoney($deuda['monto']); ?></strong></td>
+                                <td data-label="Fecha Vencimiento"><?php echo formatDate($deuda['fecha_vencimiento']); ?></td>
+                                <td data-label="Estado">
                                     <?php if ($deuda['estado'] === 'pendiente'): ?>
                                         <span class="badge bg-warning">Pendiente</span>
                                     <?php elseif ($deuda['estado'] === 'vencido'): ?>
@@ -240,7 +240,7 @@
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
-                    <tfoot style="background-color: #f8f9fa;">
+                    <tfoot>
                         <tr>
                             <th colspan="3" class="text-end">TOTAL ADEUDADO:</th>
                             <th><?php echo formatMoney($totalDeuda); ?></th>
@@ -259,49 +259,61 @@
 
 <!-- Historial de Cambios de Estado -->
 <?php if (!empty($historial_estados)): ?>
-<div class="card">
-    <div class="card-header bg-secondary" style="color: white;">
-        <i class="fas fa-history me-2"></i> Historial de Cambios de Estado
-    </div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-sm">
-                <thead>
-                    <tr>
-                        <th>Fecha</th>
-                        <th>Estado Anterior</th>
-                        <th>Estado Nuevo</th>
-                        <th>Motivo</th>
-                        <th>Tipo</th>
-                        <th>Usuario</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach ($historial_estados as $cambio): ?>
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            <i class="fas fa-history me-2"></i> Historial de Cambios de Estado
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
                         <tr>
-                            <td><?php echo formatDateTime($cambio['fecha_cambio']); ?></td>
-                            <td>
-                                <span class="badge <?php echo $cambio['estado_anterior'] === 'habilitado' ? 'bg-success' : 'bg-danger'; ?>">
-                                    <?php echo ucfirst($cambio['estado_anterior']); ?>
-                                </span>
-                            </td>
-                            <td>
-                                <span class="badge <?php echo $cambio['estado_nuevo'] === 'habilitado' ? 'bg-success' : 'bg-danger'; ?>">
-                                    <?php echo ucfirst($cambio['estado_nuevo']); ?>
-                                </span>
-                            </td>
-                            <td><?php echo e($cambio['motivo']); ?></td>
-                            <td>
-                                <span class="badge <?php echo $cambio['tipo_cambio'] === 'manual' ? 'bg-primary' : 'bg-info'; ?>">
-                                    <?php echo ucfirst($cambio['tipo_cambio']); ?>
-                                </span>
-                            </td>
-                            <td><?php echo e($cambio['nombre_usuario'] ?: 'Sistema'); ?></td>
+                            <th>Fecha</th>
+                            <th>Estado Anterior</th>
+                            <th>Estado Nuevo</th>
+                            <th>Motivo</th>
+                            <th>Tipo</th>
+                            <th>Usuario</th>
                         </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($historial_estados as $cambio): ?>
+                            <tr>
+                                <td data-label="Fecha">
+                                    <?php echo formatDateTime($cambio['fecha_cambio']); ?>
+                                </td>
+                                
+                                <td data-label="Estado Anterior">
+                                    <span class="badge <?php echo $cambio['estado_anterior'] === 'habilitado' ? 'bg-success' : 'bg-danger'; ?>">
+                                        <?php echo ucfirst(e($cambio['estado_anterior'])); ?>
+                                    </span>
+                                </td>
+                                
+                                <td data-label="Estado Nuevo">
+                                    <span class="badge <?php echo $cambio['estado_nuevo'] === 'habilitado' ? 'bg-success' : 'bg-danger'; ?>">
+                                        <?php echo ucfirst(e($cambio['estado_nuevo'])); ?>
+                                    </span>
+                                </td>
+                                
+                                <td data-label="Motivo">
+                                    <small><?php echo e($cambio['motivo']); ?></small>
+                                </td>
+                                
+                                <td data-label="Tipo">
+                                    <span class="badge <?php echo $cambio['tipo_cambio'] === 'manual' ? 'bg-primary' : 'bg-info'; ?>">
+                                        <?php echo ucfirst(e($cambio['tipo_cambio'])); ?>
+                                    </span>
+                                </td>
+                                
+                                <td data-label="Usuario">
+                                    <i class="fas fa-user-circle me-1 text-muted"></i>
+                                    <?php echo e($cambio['nombre_usuario'] ?: 'Sistema'); ?>
+                                </td>
+                            </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-</div>
 <?php endif; ?>

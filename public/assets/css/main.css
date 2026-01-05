@@ -28,6 +28,19 @@
     --transition: all 0.3s ease;
     --border-radius: 8px;
     --border-radius-lg: 12px;
+
+    /* Variables para módulo colegiados */
+    --success-light: #d4edda;
+    --success-dark: #218838;
+    
+    --danger-light: #f8d7da;
+    --danger-dark: #c82333;
+    
+    --warning-light: #fff3cd;
+    --warning-dark: #e0a800;
+    
+    --info-light: #d1ecf1;
+    --info-dark: #138496;
 }
 
 /* ===================================
