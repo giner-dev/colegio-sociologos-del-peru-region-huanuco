@@ -8,11 +8,10 @@
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- CSS Principal -->
+    <!-- CSS -->
     <link rel="stylesheet" href="<?php echo url('assets/css/main.css'); ?>">
-    
-    <!-- CSS del Dashboard -->
     <link rel="stylesheet" href="<?php echo url('assets/css/dashboard.css'); ?>">
+    <link rel="stylesheet" href="<?php echo url('assets/css/colegiados.css?v2'); ?>">
     
     <!-- CSS Adicionales según la página -->
     <?php if (isset($extra_css)): ?>

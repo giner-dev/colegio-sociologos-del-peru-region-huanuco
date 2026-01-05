@@ -14,15 +14,63 @@ ini_set('display_errors', 1);
 // Cargar funciones auxiliares
 require_once ROOT_PATH . '/helpers/functions.php';
 
+// cargar autoload de Composer
+if (file_exists(ROOT_PATH . '/vendor/autoload.php')) {
+    require_once ROOT_PATH . '/vendor/autoload.php';
+}
+
 // Cargar variables de entorno (.env)
 loadEnv();
 
 // Configurar zona horaria
 date_default_timezone_set('America/Lima');
 
-// Iniciar sesión
+
+// Configurar sesión ANTES de iniciarla
+$sessionLifetime = env('SESSION_LIFETIME', 120);
+
+// 1. Configurar duración de sesión ANTES de session_start()
+ini_set('session.gc_maxlifetime', $sessionLifetime * 60);
+
+// 2. Configurar otras opciones de sesión
+ini_set('session.cookie_lifetime', $sessionLifetime * 60);
+ini_set('session.cookie_httponly', 1);
+ini_set('session.cookie_secure', 0);
+ini_set('session.use_only_cookies', 1);
+
+// 3. iniciar sesión
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
+}
+
+// Verificar expiración por inactividad si existe LAST_ACTIVITY
+if (isset($_SESSION['LAST_ACTIVITY'])) {
+    // Calcular tiempo de inactividad (en segundos)
+    $inactiveTime = time() - $_SESSION['LAST_ACTIVITY'];
+    
+    // Si excede el tiempo permitido, destruir sesión
+    if ($inactiveTime > ($sessionLifetime * 60)) {
+        session_unset();
+        session_destroy();
+        
+        // Iniciar nueva sesión limpia
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        
+        // Redirigir a login si está en página protegida
+        $currentUrl = $_SERVER['REQUEST_URI'];
+        if (strpos($currentUrl, 'login') === false && 
+            strpos($currentUrl, 'session/time-left') === false) {
+            header('Location: ' . url('login') . '?expired=1');
+            exit();
+        }
+    }
+}
+
+// Actualizar marca de tiempo de última actividad
+if (isset($_SESSION['usuario_id'])) {
+    $_SESSION['LAST_ACTIVITY'] = time();
 }
 
 // Cargar clases del CORE
@@ -38,7 +86,7 @@ try {
     
     // Puedes verificar la conexión
     if (env('APP_ENV') === 'development') {
-        logMessage("Sistema iniciado correctamente", 'info');
+        //logMessage("Sistema iniciado correctamente", 'info');
     }
     
 } catch (Exception $e) {

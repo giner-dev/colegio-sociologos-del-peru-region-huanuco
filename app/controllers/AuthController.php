@@ -48,6 +48,9 @@ class AuthController extends Controller{
         
         // Login exitoso - Crear sesión
         $this->authService->crearSesion($resultado['usuario']);
+
+        // establecer marca de tiempo de última actividad
+        $_SESSION['LAST_ACTIVITY'] = time();
         
         $nombreUsuario = $resultado['usuario']->getNombreCompleto();
         $this->setSuccess("Bienvenido, $nombreUsuario");

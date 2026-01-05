@@ -58,11 +58,10 @@ include __DIR__ . '/header.php';
     </div>
 </div>
 
-<!-- JavaScript Principal -->
+<!-- JavaScripts -->
 <script src="<?php echo url('assets/js/main.js'); ?>"></script>
-
-<!-- JavaScript del Dashboard -->
 <script src="<?php echo url('assets/js/dashboard.js'); ?>"></script>
+<script src="<?php echo url('assets/js/colegiados.js'); ?>"></script>
 
 <!-- JavaScript Adicional según la página -->
 <?php if (isset($extra_js)): ?>

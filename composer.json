@@ -1,0 +1,21 @@
+{
+    "name": "colegio-sociologos/siad",
+    "description": "Sistema Administrativo para (CSP-RHCO)",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "phpoffice/phpspreadsheet": "^5.3"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "app/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Giner",
+            "email": "giner.dev@gmail.com"
+        }
+    ],
+    "minimum-stability": "stable"
+}

@@ -66,12 +66,37 @@ function basePath($path = '') {
 
 // Escapa caracteres HTML para prevenir XSS
 function e($string){
+    if ($string === null) {
+        return '';
+    }
     return htmlspecialchars($string, ENT_QUOTES, 'UTF-8');
 }
 
 // Verifica si el usuario está autenticado
 function isAuthenticated() {
-    return isset($_SESSION['usuario_id']);
+    // Verificar que exista usuario_id y que la sesión no haya expirado
+    if (!isset($_SESSION['usuario_id']) || !isset($_SESSION['LAST_ACTIVITY'])) {
+        return false;
+    }
+    
+    // Verificar expiración
+    $sessionLifetime = env('SESSION_LIFETIME', 120);
+    $inactiveTime = time() - $_SESSION['LAST_ACTIVITY'];
+    
+    if ($inactiveTime > ($sessionLifetime * 60)) {
+        // Sesión expirada
+        session_unset();
+        session_destroy();
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+        return false;
+    }
+    
+    // Actualizar última actividad si la sesión sigue activa
+    $_SESSION['LAST_ACTIVITY'] = time();
+    
+    return true;
 }
 
 // Obtiene el ID del usuario autenticado
@@ -107,7 +132,22 @@ function hasRole($roles) {
 // Requiere autenticación - Redirige al login si no está logueado
 function requireAuth() {
     if (!isAuthenticated()) {
+        // Guardar URL actual para redirección después de login
         $_SESSION['redirect_after_login'] = $_SERVER['REQUEST_URI'];
+        
+        // Verificar si expiró por tiempo
+        if (isset($_SESSION['LAST_ACTIVITY'])) {
+            $sessionLifetime = env('SESSION_LIFETIME', 120);
+            $inactiveTime = time() - $_SESSION['LAST_ACTIVITY'];
+            
+            if ($inactiveTime > ($sessionLifetime * 60)) {
+                // Limpiar sesión expirada
+                session_unset();
+                session_destroy();
+                redirect(url('login') . '?expired=1');
+            }
+        }
+        
         redirect(url('login'));
     }
 }
@@ -217,7 +257,6 @@ function dump($data) {
 }
 
 // Registra un mensaje en el log del sistema
-
 function logMessage($message, $level = 'info') {
     $logFile = basePath('storage/logs/app.log');
     $logDir = dirname($logFile);
@@ -231,4 +270,51 @@ function logMessage($message, $level = 'info') {
     $logEntry = "[$timestamp] [$level] $message" . PHP_EOL;
     
     file_put_contents($logFile, $logEntry, FILE_APPEND);
+}
+
+
+
+// Obtiene el tiempo restante de sesión en minutos
+function getSessionTimeLeft() {
+    if (!isset($_SESSION['LAST_ACTIVITY'])) {
+        return 0;
+    }
+    
+    $sessionLifetime = env('SESSION_LIFETIME', 120);
+    $inactiveTime = time() - $_SESSION['LAST_ACTIVITY'];
+    $timeLeft = ($sessionLifetime * 60) - $inactiveTime;
+    
+    return max(0, floor($timeLeft / 60));
+}
+
+// Renueva la sesión (extiende el tiempo)
+function renewSession() {
+    if (isset($_SESSION['LAST_ACTIVITY'])) {
+        $_SESSION['LAST_ACTIVITY'] = time();
+    }
+}
+
+// Forzar cierre de sesión
+function forceLogout() {
+    // Asegurarse de que la sesión esté iniciada
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
+    
+    session_unset();
+    session_destroy();
+    
+    // Eliminar cookie de sesión
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', time() - 42000,
+            $params["path"], $params["domain"],
+            $params["secure"], $params["httponly"]
+        );
+    }
+    
+    // Iniciar nueva sesión limpia
+    if (session_status() === PHP_SESSION_NONE) {
+        session_start();
+    }
 }

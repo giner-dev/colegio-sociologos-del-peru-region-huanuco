@@ -5,6 +5,18 @@
  */
 
 // ============================================
+// RUTAS DEL SISTEMA (No requieren autenticación especial)
+// ============================================
+
+// Ruta para obtener tiempo de sesión restante
+$router->get('/session/time-left', function() {
+    header('Content-Type: application/json');
+    echo json_encode(['timeLeft' => getSessionTimeLeft()]);
+    exit();
+});
+
+
+// ============================================
 // RUTAS PÚBLICAS (Sin autenticación)
 // ============================================
 
@@ -37,6 +49,8 @@ $router->post('/colegiados/actualizar/{id}', 'ColegiadoController@actualizar');
 $router->post('/colegiados/eliminar/{id}', 'ColegiadoController@eliminar');
 $router->get('/colegiados/importar', 'ColegiadoController@importar');
 $router->post('/colegiados/procesar-excel', 'ColegiadoController@procesarExcel');
+$router->get('/colegiados/resultado-importacion', 'ColegiadoController@resultadoImportacion');
+$router->get('/colegiados/descargar-plantilla', 'ColegiadoController@descargarPlantilla');
 $router->post('/colegiados/cambiar-estado/{id}', 'ColegiadoController@cambiarEstado');
 
 // ============================================

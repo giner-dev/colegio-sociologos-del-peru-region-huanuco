@@ -64,6 +64,9 @@ class AuthService{
         $_SESSION['usuario_rol_id'] = $usuario->RolId;
         $_SESSION['usuario_correo'] = $usuario->correo;
         $_SESSION['login_time'] = time();
+
+        // marca de tiempo de última actividad
+        $_SESSION['LAST_ACTIVITY'] = time();
         
         // Token CSRF
         $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
