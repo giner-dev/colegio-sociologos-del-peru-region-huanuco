@@ -1,0 +1,150 @@
+/* ===================================
+   MÓDULO DE PAGOS
+   =================================== */
+
+
+.btn-primary {
+    background-color: #B91D22;
+    border-color: #B91D22;
+}
+
+.btn-primary:hover {
+    background-color: #8a1519;
+    border-color: #8a1519;
+}
+
+.required::after {
+    content: " *";
+    color: red;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    color: #333;
+    font-size: 1rem;
+    margin-bottom: 10px;
+}
+
+.badge-lg {
+    font-size: 1.1rem;
+    padding: 10px 20px;
+}
+
+.total-display {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #B91D22;
+}
+
+/* Paginación personalizada */
+.pagination {
+    gap: 5px;
+}
+
+.page-link {
+    color: #B91D22;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 8px 12px;
+    transition: all 0.3s;
+}
+
+.page-link:hover {
+    background-color: #B91D22;
+    color: white;
+    border-color: #B91D22;
+}
+
+.page-item.active .page-link {
+    background-color: #B91D22;
+    border-color: #B91D22;
+    color: white;
+    font-weight: 600;
+}
+
+.page-item.disabled .page-link {
+    color: #6c757d;
+    background-color: #f8f9fa;
+    cursor: not-allowed;
+}
+
+/* Tabla mejorada */
+.table-hover tbody tr {
+    transition: all 0.3s;
+}
+
+.table-hover tbody tr:hover {
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Select2 personalizado */
+.select2-container--bootstrap-5 .select2-selection {
+    border-color: #ced4da;
+}
+
+.select2-container--bootstrap-5.select2-container--focus .select2-selection {
+    border-color: #B91D22;
+    box-shadow: 0 0 0 0.25rem rgba(185, 29, 34, 0.25);
+}
+
+/* Alertas de estado */
+.alert-info {
+    background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%);
+    border-left: 4px solid #17a2b8;
+}
+
+/* Badges personalizados */
+.badge {
+    padding: 6px 12px;
+    font-weight: 500;
+}
+
+/* Cards mejorados */
+.card {
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.card-body {
+    padding: 25px;
+}
+
+.col-md-3 .input-group {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.col-md-3 .input-group-text {
+    flex: 0 0 15px;
+    justify-content: center;
+}
+
+.col-md-3 .form-control {
+    flex: 1;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .page-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .table-responsive {
+        font-size: 0.9rem;
+    }
+    
+    .btn {
+        font-size: 0.85rem;
+        padding: 8px 12px;
+    }
+}

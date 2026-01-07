@@ -12,6 +12,7 @@
     <link rel="stylesheet" href="<?php echo url('assets/css/main.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/dashboard.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/colegiados.css'); ?>">
+    <link rel="stylesheet" href="<?php echo url('assets/css/pagos.css'); ?>">
     
 </head>
 <body>

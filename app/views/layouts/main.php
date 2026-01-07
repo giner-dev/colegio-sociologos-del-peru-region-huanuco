@@ -62,13 +62,7 @@ include __DIR__ . '/header.php';
 <script src="<?php echo url('assets/js/main.js'); ?>"></script>
 <script src="<?php echo url('assets/js/dashboard.js'); ?>"></script>
 <script src="<?php echo url('assets/js/colegiados.js'); ?>"></script>
-
-<!-- JavaScript Adicional según la página -->
-<?php if (isset($extra_js)): ?>
-    <?php foreach ($extra_js as $js): ?>
-        <script src="<?php echo url($js); ?>"></script>
-    <?php endforeach; ?>
-<?php endif; ?>
+<script src="<?php echo url('assets/js/pagos.js'); ?>"></script>
 
 </body>
 </html>

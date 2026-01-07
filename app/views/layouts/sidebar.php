@@ -49,6 +49,17 @@
                 <span>Usuarios</span>
             </a>
         </li>
+        <li>
+            <a href="<?php echo url('pagos/conceptos'); ?>" class="<?php echo (isset($active_menu) && $active_menu === 'conceptos') ? 'active' : ''; ?>">
+                <i class="fas fa-tags"></i> Conceptos de Pago
+            </a>
+        </li>
+        
+        <li>
+            <a href="<?php echo url('pagos/metodos'); ?>" class="<?php echo (isset($active_menu) && $active_menu === 'metodos') ? 'active' : ''; ?>">
+                <i class="fas fa-credit-card"></i> Métodos de Pago
+            </a>
+        </li>
         <?php endif; ?>
         
         <li>

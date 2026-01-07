@@ -44,8 +44,8 @@
 }
 
 .card-header.bg-results {
-    background-color: var(--bg-light);
-    color: var(--text-color);
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
 }
 
 .card-body {

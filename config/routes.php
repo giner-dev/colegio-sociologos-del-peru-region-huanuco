@@ -63,6 +63,22 @@ $router->get('/pagos/ver/{id}', 'PagoController@ver');
 $router->get('/pagos/historial/{idColegiado}', 'PagoController@historialColegiado');
 $router->post('/pagos/anular/{id}', 'PagoController@anular');
 
+// Gestión de Conceptos (Solo Admin)
+$router->get('/pagos/conceptos', 'PagoController@conceptos');
+$router->get('/pagos/conceptos/crear', 'PagoController@crearConcepto');
+$router->post('/pagos/conceptos/guardar', 'PagoController@guardarConcepto');
+$router->get('/pagos/conceptos/editar/{id}', 'PagoController@editarConcepto');
+$router->post('/pagos/conceptos/actualizar/{id}', 'PagoController@actualizarConcepto');
+$router->post('/pagos/conceptos/eliminar/{id}', 'PagoController@eliminarConcepto');
+
+// Gestión de Métodos de Pago (Solo Admin)
+$router->get('/pagos/metodos', 'PagoController@metodos');
+$router->get('/pagos/metodos/crear', 'PagoController@crearMetodo');
+$router->post('/pagos/metodos/guardar', 'PagoController@guardarMetodo');
+$router->get('/pagos/metodos/editar/{id}', 'PagoController@editarMetodo');
+$router->post('/pagos/metodos/actualizar/{id}', 'PagoController@actualizarMetodo');
+$router->post('/pagos/metodos/eliminar/{id}', 'PagoController@eliminarMetodo');
+
 // ============================================
 // MÓDULO: DEUDAS
 // ============================================
