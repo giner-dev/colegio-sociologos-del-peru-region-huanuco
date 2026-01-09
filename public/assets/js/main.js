@@ -1,15 +1,73 @@
-// Esperar a que el DOM esté completamente cargado
-document.addEventListener('DOMContentLoaded', function() {
+// ========================================
+// CONFIGURACIÓN GLOBAL Y BASE URL
+// ========================================
+
+// Configurar BASE_URL una sola vez al inicio
+window.APP_CONFIG = {
+    baseUrl: (() => {
+        // Método 1: Desde etiqueta <base>
+        const baseTag = document.querySelector('base');
+        if (baseTag) {
+            return baseTag.href.replace(/\/$/, '');
+        }
+        
+        // Método 2: Desde variable PHP inyectada
+        if (typeof window.PHP_BASE_URL !== 'undefined') {
+            return window.PHP_BASE_URL.replace(/\/$/, '');
+        }
+        
+        // Método 3: Construir desde window.location (más robusto)
+        const origin = window.location.origin;
+        const pathname = window.location.pathname;
+        
+        // Detectar si hay /public/ en la ruta
+        if (pathname.includes('/public/')) {
+            const publicIndex = pathname.indexOf('/public/');
+            return origin + pathname.substring(0, publicIndex + 7); // Incluye /public
+        }
+        
+        // Detectar estructura tipo /SIAD_CSH/algo
+        const segments = pathname.split('/').filter(s => s);
+        
+        if (segments.length > 0) {
+            // El primer segmento suele ser el nombre del proyecto
+            const projectName = segments[0];
+            
+            // Verificar si el segundo segmento es 'public'
+            if (segments[1] === 'public') {
+                return `${origin}/${projectName}/public`;
+            }
+            
+            // Si no hay 'public' visible, asumir que está en la raíz del proyecto
+            return `${origin}/${projectName}/public`;
+        }
+        
+        // Fallback: solo el origen
+        return origin;
+    })(),
     
-    // ========================================
-    // INICIALIZACIONES
-    // ========================================
+    sessionCheckInterval: 60000, // 1 minuto
+    sessionWarningTime: 5 // Avisar cuando queden 5 minutos
+};
+
+// Función global para obtener URL completa
+window.getAppUrl = function(path = '') {
+    return window.APP_CONFIG.baseUrl + '/' + path.replace(/^\//, '');
+};
+
+console.log('🌐 Base URL configurada:', window.APP_CONFIG.baseUrl);
+
+// ========================================
+// INICIALIZACIONES GLOBALES
+// ========================================
+document.addEventListener('DOMContentLoaded', function() {
     initDropdowns();
     initAlerts();
     initSidebarToggle();
     initTooltips();
+    initSessionMonitor();
     
-    console.log('Sistema SIAD inicializado correctamente');
+    console.log('✅ Sistema SIAD inicializado correctamente');
 });
 
 // ========================================
@@ -18,7 +76,6 @@ document.addEventListener('DOMContentLoaded', function() {
 function initSidebarToggle() {
     const menuToggleBtn = document.querySelector('.menu-toggle-btn');
     const sidebar = document.querySelector('.sidebar');
-    const contentWrapper = document.querySelector('.content-wrapper');
     
     if (!menuToggleBtn || !sidebar) return;
     
@@ -27,43 +84,34 @@ function initSidebarToggle() {
     overlay.className = 'sidebar-overlay';
     document.body.appendChild(overlay);
     
-    // Verificar si estamos en móvil
     function isMobile() {
         return window.innerWidth <= 768;
     }
     
-    // Inicializar estado según dispositivo
     function initSidebarState() {
         if (isMobile()) {
-            // En móvil: oculto por defecto
             sidebar.classList.remove('active');
             sidebar.classList.remove('collapsed');
             overlay.classList.remove('active');
         } else {
-            // En escritorio: visible por defecto
             sidebar.classList.remove('collapsed');
             sidebar.classList.remove('active');
         }
     }
     
-    // Inicializar al cargar
     initSidebarState();
     
-    // Toggle del sidebar
     menuToggleBtn.addEventListener('click', function(e) {
         e.stopPropagation();
         
         if (isMobile()) {
-            // En móvil: toggle active
             sidebar.classList.toggle('active');
             overlay.classList.toggle('active');
         } else {
-            // En escritorio: toggle collapsed
             sidebar.classList.toggle('collapsed');
         }
     });
     
-    // Cerrar sidebar al hacer clic en overlay (solo móvil)
     overlay.addEventListener('click', function() {
         if (isMobile()) {
             sidebar.classList.remove('active');
@@ -71,7 +119,6 @@ function initSidebarToggle() {
         }
     });
     
-    // Cerrar sidebar al hacer clic en un enlace (solo móvil)
     const sidebarLinks = sidebar.querySelectorAll('.sidebar-menu a');
     sidebarLinks.forEach(link => {
         link.addEventListener('click', function() {
@@ -82,22 +129,16 @@ function initSidebarToggle() {
         });
     });
     
-    // Reinicializar al cambiar tamaño de ventana
     let resizeTimer;
     window.addEventListener('resize', function() {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            initSidebarState();
-        }, 250);
+        resizeTimer = setTimeout(initSidebarState, 250);
     });
     
-    // Cerrar con tecla ESC
     document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-            if (isMobile()) {
-                sidebar.classList.remove('active');
-                overlay.classList.remove('active');
-            }
+        if (e.key === 'Escape' && isMobile()) {
+            sidebar.classList.remove('active');
+            overlay.classList.remove('active');
         }
     });
 }
@@ -112,24 +153,20 @@ function initDropdowns() {
         const toggle = dropdown.querySelector('.dropdown-toggle');
         
         if (toggle) {
-            // Toggle al hacer clic
             toggle.addEventListener('click', function(e) {
                 e.stopPropagation();
                 
-                // Cerrar otros dropdowns
                 dropdowns.forEach(d => {
                     if (d !== dropdown) {
                         d.classList.remove('active');
                     }
                 });
                 
-                // Toggle del dropdown actual
                 dropdown.classList.toggle('active');
             });
         }
     });
     
-    // Cerrar dropdown al hacer clic fuera
     document.addEventListener('click', function(e) {
         if (!e.target.closest('.dropdown')) {
             dropdowns.forEach(dropdown => {
@@ -138,7 +175,6 @@ function initDropdowns() {
         }
     });
     
-    // Cerrar dropdown al presionar ESC
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             dropdowns.forEach(dropdown => {
@@ -155,12 +191,10 @@ function initAlerts() {
     const alerts = document.querySelectorAll('.alert-dismissible');
     
     alerts.forEach(alert => {
-        // Auto-cerrar después de 5 segundos
         setTimeout(() => {
             fadeOut(alert);
         }, 5000);
         
-        // Botón de cerrar
         const closeBtn = alert.querySelector('.btn-close');
         if (closeBtn) {
             closeBtn.addEventListener('click', function() {
@@ -170,7 +204,6 @@ function initAlerts() {
     });
 }
 
-// Función para desvanecer y eliminar elementos
 function fadeOut(element) {
     if (!element) return;
     
@@ -236,9 +269,105 @@ function hideTooltip(element) {
 }
 
 // ========================================
+// MONITOR DE SESIÓN
+// ========================================
+function initSessionMonitor() {
+    // Verificar tiempo de sesión cada minuto
+    setInterval(checkSessionTime, window.APP_CONFIG.sessionCheckInterval);
+    
+    // Verificar inmediatamente
+    checkSessionTime();
+}
+
+function checkSessionTime() {
+    fetch(getAppUrl('session/time-left'))
+        .then(response => response.json())
+        .then(data => {
+            const timeLeft = data.timeLeft;
+            
+            // Si quedan menos de 5 minutos, mostrar advertencia
+            if (timeLeft > 0 && timeLeft <= window.APP_CONFIG.sessionWarningTime) {
+                showSessionWarning(timeLeft);
+            }
+            
+            // Si la sesión expiró, redirigir
+            if (timeLeft <= 0) {
+                window.location.href = getAppUrl('login?expired=1');
+            }
+        })
+        .catch(error => {
+            console.error('Error al verificar sesión:', error);
+        });
+}
+
+function showSessionWarning(minutesLeft) {
+    // Evitar mostrar múltiples warnings
+    if (document.getElementById('session-warning-toast')) {
+        return;
+    }
+    
+    const toast = document.createElement('div');
+    toast.id = 'session-warning-toast';
+    toast.className = 'toast toast-warning';
+    toast.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        padding: 15px 20px;
+        background: linear-gradient(135deg, #ffc107, #e0a800);
+        color: white;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        z-index: 10000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        min-width: 300px;
+    `;
+    
+    toast.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <i class="fas fa-clock" style="font-size: 1.5rem;"></i>
+            <div>
+                <strong>Sesión por expirar</strong>
+                <p style="margin: 5px 0 0 0; font-size: 0.9rem;">
+                    Tu sesión expirará en ${minutesLeft} minuto${minutesLeft !== 1 ? 's' : ''}
+                </p>
+            </div>
+        </div>
+        <button onclick="renewSessionNow()" style="
+            background: white;
+            color: #e0a800;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+        ">
+            Renovar Sesión
+        </button>
+    `;
+    
+    document.body.appendChild(toast);
+}
+
+window.renewSessionNow = function() {
+    fetch(getAppUrl('session/renew'), { method: 'POST' })
+        .then(() => {
+            const toast = document.getElementById('session-warning-toast');
+            if (toast) toast.remove();
+            
+            showToast('Sesión renovada exitosamente', 'success');
+        })
+        .catch(error => {
+            console.error('Error al renovar sesión:', error);
+        });
+};
+
+// ========================================
 // NOTIFICACIONES TOAST
 // ========================================
-function showToast(message, type = 'info', duration = 3000) {
+window.showToast = function(message, type = 'info', duration = 3000) {
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     
@@ -254,6 +383,13 @@ function showToast(message, type = 'info', duration = 3000) {
         <span>${message}</span>
     `;
     
+    const colors = {
+        success: 'linear-gradient(135deg, #28a745, #218838)',
+        error: 'linear-gradient(135deg, #dc3545, #c82333)',
+        warning: 'linear-gradient(135deg, #ffc107, #e0a800)',
+        info: 'linear-gradient(135deg, #17a2b8, #138496)'
+    };
+    
     toast.style.cssText = `
         position: fixed;
         top: 80px;
@@ -268,26 +404,16 @@ function showToast(message, type = 'info', duration = 3000) {
         animation: slideInRight 0.3s ease;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         min-width: 250px;
+        background: ${colors[type] || colors.info};
     `;
-    
-    // Colores según tipo
-    const colors = {
-        success: 'linear-gradient(135deg, #28a745, #218838)',
-        error: 'linear-gradient(135deg, #dc3545, #c82333)',
-        warning: 'linear-gradient(135deg, #ffc107, #e0a800)',
-        info: 'linear-gradient(135deg, #17a2b8, #138496)'
-    };
-    
-    toast.style.background = colors[type] || colors.info;
     
     document.body.appendChild(toast);
     
-    // Auto-eliminar
     setTimeout(() => {
         toast.style.animation = 'slideOutRight 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, duration);
-}
+};
 
 // Agregar animaciones CSS si no existen
 if (!document.querySelector('#toast-animations')) {
@@ -295,25 +421,13 @@ if (!document.querySelector('#toast-animations')) {
     style.id = 'toast-animations';
     style.textContent = `
         @keyframes slideInRight {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
         }
         
         @keyframes slideOutRight {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            to {
-                transform: translateX(100%);
-                opacity: 0;
-            }
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
         }
     `;
     document.head.appendChild(style);
@@ -322,7 +436,7 @@ if (!document.querySelector('#toast-animations')) {
 // ========================================
 // CONFIRMACIÓN DE ACCIONES
 // ========================================
-function confirmAction(message, callback) {
+window.confirmAction = function(message, callback) {
     const overlay = document.createElement('div');
     overlay.style.cssText = `
         position: fixed;
@@ -383,7 +497,6 @@ function confirmAction(message, callback) {
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
     
-    // Estilos de animación
     if (!document.querySelector('#modal-animations')) {
         const style = document.createElement('style');
         style.id = 'modal-animations';
@@ -400,7 +513,6 @@ function confirmAction(message, callback) {
         document.head.appendChild(style);
     }
     
-    // Event listeners
     modal.querySelector('.btn-cancel').addEventListener('click', () => {
         overlay.remove();
     });
@@ -415,26 +527,95 @@ function confirmAction(message, callback) {
             overlay.remove();
         }
     });
-}
+};
 
 // ========================================
 // FORMATO DE NÚMEROS
 // ========================================
-function formatNumber(number) {
+window.formatNumber = function(number) {
     return new Intl.NumberFormat('es-PE').format(number);
-}
+};
 
-function formatMoney(amount) {
+window.formatMoney = function(amount) {
     return new Intl.NumberFormat('es-PE', {
         style: 'currency',
         currency: 'PEN'
     }).format(amount);
-}
+};
 
 // ========================================
-// EXPORTS PARA USO GLOBAL
+// UTILIDADES COMUNES PARA MÓDULOS
 // ========================================
-window.showToast = showToast;
-window.confirmAction = confirmAction;
-window.formatNumber = formatNumber;
-window.formatMoney = formatMoney;
+window.AppUtils = {
+    // Formatear fecha DD/MM/YYYY
+    formatDate: function(date) {
+        if (!date) return '-';
+        
+        const d = date instanceof Date ? date : new Date(date);
+        if (isNaN(d.getTime())) return '-';
+        
+        const day = String(d.getDate()).padStart(2, '0');
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const year = d.getFullYear();
+        return `${day}/${month}/${year}`;
+    },
+    
+    // Escapar HTML
+    escapeHtml: function(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+    
+    // Submit form por POST
+    submitForm: function(action, data = {}) {
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = action;
+        
+        for (const key in data) {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = key;
+            input.value = data[key];
+            form.appendChild(input);
+        }
+        
+        document.body.appendChild(form);
+        form.submit();
+    },
+    
+    // Mostrar loading
+    showLoading: function(message = 'Cargando...') {
+        const loading = document.createElement('div');
+        loading.id = 'app-loading';
+        loading.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+        `;
+        loading.innerHTML = `
+            <div style="background: white; padding: 30px; border-radius: 10px; text-align: center;">
+                <i class="fas fa-spinner fa-spin fa-3x" style="color: #B91D22;"></i>
+                <p style="margin-top: 15px; font-size: 1.1rem; color: #333;">${message}</p>
+            </div>
+        `;
+        document.body.appendChild(loading);
+    },
+    
+    // Ocultar loading
+    hideLoading: function() {
+        const loading = document.getElementById('app-loading');
+        if (loading) loading.remove();
+    }
+};
+
+console.log('✅ Utilidades globales cargadas');

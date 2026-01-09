@@ -40,7 +40,7 @@ class PagoService {
         return $this->pagoRepository->findById($id);
     }
 
-    // Registra un nuevo pago
+    // 🔧 CORREGIDO: Registra un nuevo pago
     public function registrarPago($datos, $usuarioId) {
         $errores = $this->validarDatos($datos);
         if (!empty($errores)) {
@@ -90,13 +90,12 @@ class PagoService {
         $this->db->beginTransaction();
         
         try {
-            // 1. Registrar el pago
+            // ✅ 1. Registrar el pago (SIN fecha_registro_pago)
             $datosInsert = [
                 'colegiado_id' => $datos['colegiado_id'],
                 'deuda_id' => $datos['deuda_id'],
                 'monto' => $datos['monto'],
                 'fecha_pago' => $datos['fecha_pago'],
-                'fecha_registro_pago' => date('Y-m-d H:i:s'),
                 'metodo_pago_id' => $datos['metodo_pago_id'],
                 'numero_comprobante' => $datos['numero_comprobante'] ?? null,
                 'archivo_comprobante' => $datos['archivo_comprobante'] ?? null,
@@ -342,22 +341,24 @@ class PagoService {
 
     // Obtiene deudas pendientes de un colegiado
     public function obtenerDeudasPendientes($colegiadoId) {
-        // Asegurarse de que devolvemos datos estructurados
         $deudas = $this->pagoRepository->getDeudasPendientes($colegiadoId);
         
-        // Si getDeudasPendientes() devuelve arrays, convertirlos a formato consistente
         $resultado = [];
         foreach ($deudas as $deuda) {
             if (is_array($deuda)) {
                 $resultado[] = [
                     'idDeuda' => $deuda['idDeuda'] ?? $deuda['idDeuda'],
+                    'concepto_id' => $deuda['concepto_id'] ?? null,
                     'concepto_nombre' => $deuda['concepto_nombre'] ?? $deuda['nombre_completo'] ?? '',
                     'descripcion_deuda' => $deuda['descripcion_deuda'] ?? '',
                     'monto_esperado' => floatval($deuda['monto_esperado'] ?? 0),
                     'monto_pagado' => floatval($deuda['monto_pagado'] ?? 0),
                     'saldo_pendiente' => floatval($deuda['saldo_pendiente'] ?? 0),
+                    'fecha_generacion' => $deuda['fecha_generacion'] ?? null,
                     'fecha_vencimiento' => $deuda['fecha_vencimiento'] ?? '',
-                    'estado' => $deuda['estado'] ?? 'pendiente'
+                    'fecha_maxima_pago' => $deuda['fecha_maxima_pago'] ?? null,
+                    'estado' => $deuda['estado'] ?? 'pendiente',
+                    'origen' => $deuda['origen'] ?? 'manual'
                 ];
             } elseif (is_object($deuda)) {
                 $resultado[] = $deuda;
@@ -396,7 +397,6 @@ class PagoService {
             return ['success' => false, 'errors' => $errores];
         }
         
-        // CRÍTICO: Verificar correctamente el checkbox
         $esRecurrente = isset($datos['es_recurrente']) && $datos['es_recurrente'] == '1' ? 1 : 0;
         
         $datosInsert = [
@@ -442,7 +442,6 @@ class PagoService {
             return ['success' => false, 'errors' => $errores];
         }
         
-        // CRÍTICO: Verificar correctamente el checkbox
         $esRecurrente = isset($datos['es_recurrente']) && $datos['es_recurrente'] == '1' ? 1 : 0;
         
         $datosUpdate = [

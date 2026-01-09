@@ -266,20 +266,40 @@ class DeudaRepository {
     }
 
     // Actualiza el monto pagado de una deuda
-    public function actualizarMontoPagado($id, $montoPagado) {
+    public function actualizarMontoPagado($deudaId, $nuevoMontoPagado) {
+        // 1. Obtener la deuda actual
+        $deuda = $this->findById($deudaId);
+        
+        if (!$deuda) {
+            throw new Exception("Deuda no encontrada");
+        }
+        
+        // 2. Calcular el nuevo estado en PHP
+        $nuevoEstado = 'pendiente';
+        
+        if ($nuevoMontoPagado >= $deuda->monto_esperado) {
+            $nuevoEstado = 'pagado';
+        } elseif ($nuevoMontoPagado > 0) {
+            $nuevoEstado = 'parcial';
+        } elseif ($deuda->estado === 'vencido') {
+            $nuevoEstado = 'vencido'; // Mantener vencido si ya lo estaba
+        }
+        
+        // 3. Actualizar con una consulta simple (sin CASE)
         $sql = "UPDATE deudas 
                 SET monto_pagado = :monto_pagado,
-                    estado = CASE 
-                        WHEN :monto_pagado >= monto_esperado THEN 'pagado'
-                        WHEN :monto_pagado > 0 THEN 'parcial'
-                        ELSE estado
-                    END
+                    estado = :estado
                 WHERE idDeuda = :id";
         
-        return $this->db->execute($sql, [
-            'id' => $id,
-            'monto_pagado' => $montoPagado
+        $resultado = $this->db->execute($sql, [
+            'monto_pagado' => $nuevoMontoPagado,
+            'estado' => $nuevoEstado,
+            'id' => $deudaId
         ]);
+        
+        logMessage("Deuda actualizada: ID $deudaId - Monto pagado: $nuevoMontoPagado - Estado: $nuevoEstado", 'info');
+        
+        return $resultado;
     }
 
     // Cambia el estado de una deuda

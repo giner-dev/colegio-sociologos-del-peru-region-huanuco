@@ -88,6 +88,7 @@ class PagoRepository {
         $sql = "SELECT COUNT(*) as total
                 FROM pagos p
                 INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
+                INNER JOIN deudas d ON p.deuda_id = d.idDeuda
                 WHERE 1=1";
         
         $params = [];
@@ -120,6 +121,11 @@ class PagoRepository {
         if (!empty($filtros['estado'])) {
             $sql .= " AND p.estado = :estado";
             $params['estado'] = $filtros['estado'];
+        }
+        
+        if (!empty($filtros['concepto_id'])) {
+            $sql .= " AND d.concepto_id = :concepto_id";
+            $params['concepto_id'] = $filtros['concepto_id'];
         }
         
         $result = $this->db->queryOne($sql, $params);
@@ -155,14 +161,15 @@ class PagoRepository {
         return null;
     }
 
-    // Crea un nuevo pago
+    // 🔧 CORREGIDO: Crea un nuevo pago (ERROR SQL SOLUCIONADO)
     public function create($data) {
+        // ✅ CORRECCIÓN: Eliminar fecha_registro_pago duplicado
+        // fecha_registro ya se maneja con DEFAULT CURRENT_TIMESTAMP
         $sql = "INSERT INTO pagos (
                     colegiado_id, 
                     deuda_id, 
                     monto, 
                     fecha_pago,
-                    fecha_registro_pago,
                     metodo_pago_id, 
                     numero_comprobante, 
                     archivo_comprobante,
@@ -174,7 +181,6 @@ class PagoRepository {
                     :deuda_id, 
                     :monto, 
                     :fecha_pago,
-                    :fecha_registro_pago,
                     :metodo_pago_id, 
                     :numero_comprobante, 
                     :archivo_comprobante,
@@ -183,7 +189,21 @@ class PagoRepository {
                     :usuario_registro_id
                 )";
         
-        return $this->db->insert($sql, $data);
+        // ✅ Preparar parámetros sin fecha_registro_pago
+        $params = [
+            'colegiado_id' => $data['colegiado_id'],
+            'deuda_id' => $data['deuda_id'],
+            'monto' => $data['monto'],
+            'fecha_pago' => $data['fecha_pago'],
+            'metodo_pago_id' => $data['metodo_pago_id'],
+            'numero_comprobante' => $data['numero_comprobante'] ?? null,
+            'archivo_comprobante' => $data['archivo_comprobante'] ?? null,
+            'estado' => $data['estado'] ?? 'registrado',
+            'observaciones' => $data['observaciones'] ?? null,
+            'usuario_registro_id' => $data['usuario_registro_id']
+        ];
+        
+        return $this->db->insert($sql, $params);
     }
 
     // Crea el detalle de aplicación del pago
