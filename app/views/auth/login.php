@@ -7,6 +7,8 @@
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="<?php echo url('assets/css/login.css'); ?>">
+    <link rel="icon" type="image/png" href="<?php echo url('uploads/fondos/favicon.png'); ?>">
+
 </head>
 <body>
     <div class="login-container">

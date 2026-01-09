@@ -27,7 +27,7 @@
             <div class="col-md-3 mb-3">
                 <div class="info-label">N° Colegiatura</div>
                 <div class="info-value">
-                    <strong><?php echo e($colegiado->numero_colegiatura); ?></strong>
+                    <strong><?php echo formatNumeroColegiatura($colegiado->numero_colegiatura); ?></strong>
                 </div>
             </div>
             <div class="col-md-3 mb-3">
@@ -170,6 +170,7 @@
                             <th>Concepto</th>
                             <th>Monto</th>
                             <th>Método</th>
+                            <th>Estado</th>
                             <th>Registrado por</th>
                         </tr>
                     </thead>
@@ -177,14 +178,26 @@
                         <?php foreach ($historial_pagos as $pago): ?>
                             <tr>
                                 <td data-label="Fecha"><?php echo formatDate($pago['fecha_pago']); ?></td>
-                                <td data-label="Concepto"><?php echo e($pago['concepto_nombre'] ?: $pago['concepto_texto']); ?></td>
+                                <td data-label="Concepto">
+                                    <div><strong><?php echo e($pago['concepto_nombre'] ?? 'Sin concepto'); ?></strong></div>
+                                    <small class="text-muted"><?php echo e($pago['descripcion_deuda']); ?></small>
+                                </td>
                                 <td data-label="Monto"><strong><?php echo formatMoney($pago['monto']); ?></strong></td>
                                 <td data-label="Método">
                                     <span class="badge bg-info">
-                                        <?php echo ucfirst(e($pago['metodo_pago_id'])); ?>
+                                        <?php echo e($pago['metodo_pago_nombre'] ?? 'N/A'); ?>
                                     </span>
                                 </td>
-                                <td data-label="Registrado por"><?php echo e($pago['nombre_usuario']); ?></td>
+                                <td data-label="Estado">
+                                    <?php if ($pago['estado'] === 'confirmado'): ?>
+                                        <span class="badge bg-success">Confirmado</span>
+                                    <?php elseif ($pago['estado'] === 'registrado'): ?>
+                                        <span class="badge bg-warning">Registrado</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-danger">Anulado</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td data-label="Registrado por"><?php echo e($pago['nombre_usuario'] ?? 'N/A'); ?></td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
@@ -211,8 +224,11 @@
                     <thead>
                         <tr>
                             <th>Concepto</th>
-                            <th>Monto</th>
-                            <th>Fecha Vencimiento</th>
+                            <th>Descripción</th>
+                            <th>Monto Esperado</th>
+                            <th>Pagado</th>
+                            <th>Saldo</th>
+                            <th>Vencimiento</th>
                             <th>Estado</th>
                         </tr>
                     </thead>
@@ -221,29 +237,48 @@
                         $totalDeuda = 0;
                         foreach ($deudas as $deuda): 
                             if ($deuda['estado'] !== 'pagado') {
-                                $totalDeuda += $deuda['monto'];
+                                $totalDeuda += $deuda['saldo_pendiente'];
                             }
                         ?>
                             <tr>
-                                <td data-label="Concepto"><?php echo e($deuda['concepto']); ?></td>
-                                <td data-label="Monto"><strong><?php echo formatMoney($deuda['monto']); ?></strong></td>
-                                <td data-label="Fecha Vencimiento"><?php echo formatDate($deuda['fecha_vencimiento']); ?></td>
+                                <td data-label="Concepto">
+                                    <strong><?php echo e($deuda['concepto_nombre'] ?? 'Sin concepto'); ?></strong>
+                                </td>
+                                <td data-label="Descripción">
+                                    <?php echo e($deuda['descripcion_deuda']); ?>
+                                </td>
+                                <td data-label="Monto Esperado">
+                                    <?php echo formatMoney($deuda['monto_esperado']); ?>
+                                </td>
+                                <td data-label="Pagado">
+                                    <?php echo formatMoney($deuda['monto_pagado']); ?>
+                                </td>
+                                <td data-label="Saldo">
+                                    <strong><?php echo formatMoney($deuda['saldo_pendiente']); ?></strong>
+                                </td>
+                                <td data-label="Vencimiento">
+                                    <?php echo formatDate($deuda['fecha_vencimiento']); ?>
+                                </td>
                                 <td data-label="Estado">
                                     <?php if ($deuda['estado'] === 'pendiente'): ?>
                                         <span class="badge bg-warning">Pendiente</span>
+                                    <?php elseif ($deuda['estado'] === 'parcial'): ?>
+                                        <span class="badge bg-info">Parcial</span>
                                     <?php elseif ($deuda['estado'] === 'vencido'): ?>
                                         <span class="badge bg-danger">Vencido</span>
-                                    <?php else: ?>
+                                    <?php elseif ($deuda['estado'] === 'pagado'): ?>
                                         <span class="badge bg-success">Pagado</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-secondary">Cancelado</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
                     </tbody>
                     <tfoot>
-                        <tr>
-                            <th colspan="3" class="text-end">TOTAL ADEUDADO:</th>
-                            <th><?php echo formatMoney($totalDeuda); ?></th>
+                        <tr class="table-light">
+                            <th colspan="4" class="text-end">TOTAL ADEUDADO:</th>
+                            <th colspan="3"><?php echo formatMoney($totalDeuda); ?></th>
                         </tr>
                     </tfoot>
                 </table>
@@ -251,7 +286,7 @@
         <?php else: ?>
             <p class="text-muted text-center mb-0">
                 <i class="fas fa-check-circle me-2"></i>
-                No hay deudas pendientes
+                No hay deudas registradas para este colegiado
             </p>
         <?php endif; ?>
     </div>

@@ -15,18 +15,18 @@
         </li>
         
         <li>
-            <a href="<?php echo url('pagos'); ?>" class="<?php echo (isset($active_menu) && $active_menu === 'pagos') ? 'active' : ''; ?>">
-                <i class="fas fa-money-bill-wave"></i>
-                <span>Pagos</span>
-            </a>
-        </li>
-        
-        <li>
             <a href="<?php echo url('deudas'); ?>" class="<?php echo (isset($active_menu) && $active_menu === 'deudas') ? 'active' : ''; ?>">
                 <i class="fas fa-file-invoice-dollar"></i>
                 <span>Deudas</span>
             </a>
         </li>
+
+        <li>
+            <a href="<?php echo url('pagos'); ?>" class="<?php echo (isset($active_menu) && $active_menu === 'pagos') ? 'active' : ''; ?>">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Pagos</span>
+            </a>
+        </li> 
         
         <li>
             <a href="<?php echo url('egresos'); ?>" class="<?php echo (isset($active_menu) && $active_menu === 'egresos') ? 'active' : ''; ?>">

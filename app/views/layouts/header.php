@@ -7,12 +7,15 @@
     
     <!-- Font Awesome -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <link rel="icon" type="image/png" href="<?php echo url('uploads/fondos/favicon.png'); ?>">
     
     <!-- CSS -->
     <link rel="stylesheet" href="<?php echo url('assets/css/main.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/dashboard.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/colegiados.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/pagos.css'); ?>">
+    <link rel="stylesheet" href="<?php echo url('assets/css/deudas.css'); ?>">
     
 </head>
 <body>

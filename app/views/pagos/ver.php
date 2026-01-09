@@ -8,8 +8,15 @@
             <a href="<?php echo url('pagos'); ?>" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-1"></i> Volver
             </a>
-            <?php if (hasRole('administrador') && $pago->estado !== 'anulado'): ?>
-                <button type="button" class="btn btn-danger" onclick="anularPago(<?php echo $pago->idPagos; ?>)">
+            
+            <?php if (hasRole(['administrador', 'tesorero']) && $pago->isRegistrado()): ?>
+                <button type="button" class="btn btn-success" onclick="confirmarPago(<?php echo $pago->idPago; ?>)">
+                    <i class="fas fa-check me-1"></i> Confirmar Pago
+                </button>
+            <?php endif; ?>
+            
+            <?php if (hasRole('administrador') && !$pago->isAnulado()): ?>
+                <button type="button" class="btn btn-danger" onclick="anularPago(<?php echo $pago->idPago; ?>)">
                     <i class="fas fa-ban me-1"></i> Anular Pago
                 </button>
             <?php endif; ?>
@@ -29,20 +36,16 @@
                     <div class="col-md-6 mb-3">
                         <div class="info-label">N° de Pago</div>
                         <div class="info-value">
-                            <strong>#<?php echo str_pad($pago->idPagos, 6, '0', STR_PAD_LEFT); ?></strong>
+                            <strong>#<?php echo str_pad($pago->idPago, 6, '0', STR_PAD_LEFT); ?></strong>
                         </div>
                     </div>
                     
                     <div class="col-md-6 mb-3">
                         <div class="info-label">Estado</div>
                         <div>
-                            <?php if ($pago->estado === 'registrado'): ?>
-                                <span class="badge bg-primary badge-lg">REGISTRADO</span>
-                            <?php elseif ($pago->estado === 'validado'): ?>
-                                <span class="badge bg-success badge-lg">VALIDADO</span>
-                            <?php else: ?>
-                                <span class="badge bg-danger badge-lg">ANULADO</span>
-                            <?php endif; ?>
+                            <span class="badge bg-<?php echo $pago->getEstadoClase(); ?> badge-lg">
+                                <?php echo $pago->getEstadoTexto(); ?>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -51,9 +54,9 @@
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <div class="info-label">Concepto</div>
+                        <div class="info-label">Concepto Pagado</div>
                         <div class="info-value">
-                            <?php echo e($pago->concepto_nombre ?: $pago->concepto_texto); ?>
+                            <?php echo e($pago->getConcepto()); ?>
                         </div>
                     </div>
                     
@@ -69,8 +72,14 @@
                 
                 <div class="row">
                     <div class="col-md-6 mb-3">
-                        <div class="info-label">Fecha de Pago</div>
-                        <div class="info-value"><?php echo formatDate($pago->fecha_pago); ?></div>
+                        <div class="info-label">Deuda Pagada</div>
+                        <div class="info-value">
+                            <?php echo e($pago->deuda_descripcion); ?>
+                            <br>
+                            <small class="text-muted">
+                                Total deuda: <?php echo formatMoney($pago->deuda_monto_esperado); ?>
+                            </small>
+                        </div>
                     </div>
                     
                     <div class="col-md-6 mb-3">
@@ -83,11 +92,49 @@
                     </div>
                 </div>
                 
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Fecha de Pago</div>
+                        <div class="info-value"><?php echo formatDate($pago->fecha_pago); ?></div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Fecha de Registro</div>
+                        <div class="info-value"><?php echo formatDateTime($pago->fecha_registro); ?></div>
+                    </div>
+                </div>
+                
                 <?php if ($pago->numero_comprobante): ?>
                 <div class="row">
-                    <div class="col-md-12 mb-3">
+                    <div class="col-md-6 mb-3">
                         <div class="info-label">N° de Comprobante</div>
                         <div class="info-value"><?php echo e($pago->numero_comprobante); ?></div>
+                    </div>
+                    
+                    <?php if ($pago->archivo_comprobante): ?>
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Comprobante Digital</div>
+                        <div class="info-value">
+                            <a href="<?php echo url($pago->archivo_comprobante); ?>" 
+                               target="_blank" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-download me-1"></i> Descargar
+                            </a>
+                        </div>
+                    </div>
+                    <?php endif; ?>
+                </div>
+                <?php endif; ?>
+                
+                <?php if ($pago->fecha_confirmacion): ?>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Fecha de Confirmación</div>
+                        <div class="info-value"><?php echo formatDateTime($pago->fecha_confirmacion); ?></div>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <div class="info-label">Confirmado por</div>
+                        <div class="info-value"><?php echo e($pago->usuario_confirmacion_nombre); ?></div>
                     </div>
                 </div>
                 <?php endif; ?>
@@ -120,7 +167,7 @@
                 
                 <div class="mb-3">
                     <div class="info-label">DNI</div>
-                    <div class="info-value"><?php echo e($pago->dni ?? ''); ?></div>
+                    <div class="info-value"><?php echo e($pago->dni); ?></div>
                 </div>
                 
                 <div class="mb-3">
@@ -130,9 +177,14 @@
                     </div>
                 </div>
                 
-                <a href="<?php echo url('colegiados/ver/' . $pago->colegiados_id); ?>" 
-                   class="btn btn-sm btn-outline-primary w-100">
+                <a href="<?php echo url('colegiados/ver/' . $pago->colegiado_id); ?>" 
+                   class="btn btn-sm btn-outline-primary w-100 mb-2">
                     <i class="fas fa-eye me-1"></i> Ver Colegiado
+                </a>
+                
+                <a href="<?php echo url('pagos/historial/' . $pago->colegiado_id); ?>" 
+                   class="btn btn-sm btn-outline-info w-100">
+                    <i class="fas fa-history me-1"></i> Ver Historial de Pagos
                 </a>
             </div>
         </div>
@@ -145,7 +197,7 @@
             <div class="card-body">
                 <div class="mb-3">
                     <div class="info-label">Registrado por</div>
-                    <div class="info-value"><?php echo e($pago->usuario_nombre); ?></div>
+                    <div class="info-value"><?php echo e($pago->usuario_registro_nombre); ?></div>
                 </div>
                 
                 <div class="mb-3">
@@ -163,26 +215,3 @@
         </div>
     </div>
 </div>
-
-<script>
-function anularPago(id) {
-    Swal.fire({
-        title: '¿Anular este pago?',
-        text: 'Esta acción no se puede deshacer',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#B91D22',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, anular',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '<?php echo url('pagos/anular/'); ?>' + id;
-            document.body.appendChild(form);
-            form.submit();
-        }
-    });
-}
-</script>

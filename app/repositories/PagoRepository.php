@@ -1,27 +1,33 @@
 <?php
 require_once __DIR__ . '/../models/Pago.php';
 
-class PagoRepository{
+class PagoRepository {
     private $db;
     
     public function __construct() {
         $this->db = Database::getInstance();
     }
 
-    // obtiene pagos con paginación y filtros
+    // Obtiene pagos con paginación y filtros
     public function findAllPaginated($page = 1, $perPage = 25, $filtros = []) {
         $offset = ($page - 1) * $perPage;
         
-        $sql = "SELECT p.*, 
-                       c.nombres, c.apellido_paterno, c.apellido_materno, c.numero_colegiatura,
-                       cp.nombre_completo as concepto_nombre,
-                       m.nombre as metodo_nombre,
-                       u.nombre_usuario as usuario_nombre
+        $sql = "SELECT p.*,
+                       c.nombres, c.apellido_paterno, c.apellido_materno, 
+                       c.numero_colegiatura, c.dni,
+                       d.descripcion_deuda as deuda_descripcion,
+                       cp.nombre_completo as deuda_concepto,
+                       d.monto_esperado as deuda_monto_esperado,
+                       mp.nombre as metodo_nombre,
+                       ur.nombre_usuario as usuario_registro_nombre,
+                       uc.nombre_usuario as usuario_confirmacion_nombre
                 FROM pagos p
-                INNER JOIN colegiados c ON p.colegiados_id = c.idColegiados
-                LEFT JOIN conceptos_pago cp ON p.concepto_id = cp.idConcepto
-                LEFT JOIN metodo_pago m ON p.metodo_pago_id = m.idMetodo
-                LEFT JOIN usuarios u ON p.usuario_registro_id = u.idUsuario
+                INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
+                INNER JOIN deudas d ON p.deuda_id = d.idDeuda
+                INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
+                INNER JOIN metodo_pago mp ON p.metodo_pago_id = mp.idMetodo
+                INNER JOIN usuarios ur ON p.usuario_registro_id = ur.idUsuario
+                LEFT JOIN usuarios uc ON p.usuario_confirmacion_id = uc.idUsuario
                 WHERE 1=1";
         
         $params = [];
@@ -29,6 +35,11 @@ class PagoRepository{
         if (!empty($filtros['numero_colegiatura'])) {
             $sql .= " AND c.numero_colegiatura LIKE :numero";
             $params['numero'] = '%' . $filtros['numero_colegiatura'] . '%';
+        }
+        
+        if (!empty($filtros['dni'])) {
+            $sql .= " AND c.dni LIKE :dni";
+            $params['dni'] = '%' . $filtros['dni'] . '%';
         }
         
         if (!empty($filtros['fecha_inicio'])) {
@@ -51,7 +62,13 @@ class PagoRepository{
             $params['estado'] = $filtros['estado'];
         }
         
-        $sql .= " ORDER BY p.fecha_pago DESC, p.fecha_registro DESC LIMIT :limit OFFSET :offset";
+        if (!empty($filtros['concepto_id'])) {
+            $sql .= " AND d.concepto_id = :concepto_id";
+            $params['concepto_id'] = $filtros['concepto_id'];
+        }
+        
+        $sql .= " ORDER BY p.fecha_pago DESC, p.fecha_registro DESC 
+                  LIMIT :limit OFFSET :offset";
         
         $params['limit'] = $perPage;
         $params['offset'] = $offset;
@@ -66,11 +83,11 @@ class PagoRepository{
         return $pagos;
     }
 
-    // cuenta total de pagos con filtros
+    // Cuenta total de pagos con filtros
     public function countAll($filtros = []) {
         $sql = "SELECT COUNT(*) as total
                 FROM pagos p
-                INNER JOIN colegiados c ON p.colegiados_id = c.idColegiados
+                INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
                 WHERE 1=1";
         
         $params = [];
@@ -78,6 +95,11 @@ class PagoRepository{
         if (!empty($filtros['numero_colegiatura'])) {
             $sql .= " AND c.numero_colegiatura LIKE :numero";
             $params['numero'] = '%' . $filtros['numero_colegiatura'] . '%';
+        }
+        
+        if (!empty($filtros['dni'])) {
+            $sql .= " AND c.dni LIKE :dni";
+            $params['dni'] = '%' . $filtros['dni'] . '%';
         }
         
         if (!empty($filtros['fecha_inicio'])) {
@@ -104,19 +126,25 @@ class PagoRepository{
         return $result['total'];
     }
 
-    // busca un pago por ID
+    // Busca un pago por ID
     public function findById($id) {
-        $sql = "SELECT p.*, 
-                       c.nombres, c.apellido_paterno, c.apellido_materno, c.numero_colegiatura, c.dni,
-                       cp.nombre_completo as concepto_nombre,
-                       m.nombre as metodo_nombre,
-                       u.nombre_usuario as usuario_nombre
+        $sql = "SELECT p.*,
+                       c.nombres, c.apellido_paterno, c.apellido_materno, 
+                       c.numero_colegiatura, c.dni,
+                       d.descripcion_deuda as deuda_descripcion,
+                       cp.nombre_completo as deuda_concepto,
+                       d.monto_esperado as deuda_monto_esperado,
+                       mp.nombre as metodo_nombre,
+                       ur.nombre_usuario as usuario_registro_nombre,
+                       uc.nombre_usuario as usuario_confirmacion_nombre
                 FROM pagos p
-                INNER JOIN colegiados c ON p.colegiados_id = c.idColegiados
-                LEFT JOIN conceptos_pago cp ON p.concepto_id = cp.idConcepto
-                LEFT JOIN metodo_pago m ON p.metodo_pago_id = m.idMetodo
-                LEFT JOIN usuarios u ON p.usuario_registro_id = u.idUsuario
-                WHERE p.idPagos = :id";
+                INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
+                INNER JOIN deudas d ON p.deuda_id = d.idDeuda
+                INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
+                INNER JOIN metodo_pago mp ON p.metodo_pago_id = mp.idMetodo
+                INNER JOIN usuarios ur ON p.usuario_registro_id = ur.idUsuario
+                LEFT JOIN usuarios uc ON p.usuario_confirmacion_id = uc.idUsuario
+                WHERE p.idPago = :id";
         
         $result = $this->db->queryOne($sql, ['id' => $id]);
         
@@ -127,44 +155,94 @@ class PagoRepository{
         return null;
     }
 
-    // crea un nuevo pago
+    // Crea un nuevo pago
     public function create($data) {
         $sql = "INSERT INTO pagos (
-                    colegiados_id, concepto_id, concepto_texto, monto, fecha_pago,
-                    estado, metodo_pago_id, numero_comprobante, observaciones,
-                    usuario_registro_id, archivo_comprobante
+                    colegiado_id, 
+                    deuda_id, 
+                    monto, 
+                    fecha_pago,
+                    fecha_registro_pago,
+                    metodo_pago_id, 
+                    numero_comprobante, 
+                    archivo_comprobante,
+                    estado, 
+                    observaciones,
+                    usuario_registro_id
                 ) VALUES (
-                    :colegiados_id, :concepto_id, :concepto_texto, :monto, :fecha_pago,
-                    :estado, :metodo_pago_id, :numero_comprobante, :observaciones,
-                    :usuario_registro_id, :archivo_comprobante
+                    :colegiado_id, 
+                    :deuda_id, 
+                    :monto, 
+                    :fecha_pago,
+                    :fecha_registro_pago,
+                    :metodo_pago_id, 
+                    :numero_comprobante, 
+                    :archivo_comprobante,
+                    :estado, 
+                    :observaciones,
+                    :usuario_registro_id
                 )";
         
         return $this->db->insert($sql, $data);
     }
 
-    // anula un pago
-    public function anular($id) {
-        $sql = "UPDATE pagos SET estado = 'anulado' WHERE idPagos = :id";
-        return $this->db->execute($sql, ['id' => $id]);
+    // Crea el detalle de aplicación del pago
+    public function crearDetalleAplicacion($data) {
+        $sql = "INSERT INTO detalle_aplicacion_pagos (
+                    pago_id, 
+                    deuda_id, 
+                    monto_aplicado,
+                    usuario_aplicacion_id
+                ) VALUES (
+                    :pago_id, 
+                    :deuda_id, 
+                    :monto_aplicado,
+                    :usuario_aplicacion_id
+                )";
+        
+        return $this->db->insert($sql, $data);
     }
 
-    // valida un pago
-    public function validar($id) {
-        $sql = "UPDATE pagos SET estado = 'validado' WHERE idPagos = :id";
-        return $this->db->execute($sql, ['id' => $id]);
+    // Confirma un pago
+    public function confirmar($id, $usuarioConfirmacionId) {
+        $sql = "UPDATE pagos 
+                SET estado = 'confirmado',
+                    fecha_confirmacion = NOW(),
+                    usuario_confirmacion_id = :usuario_confirmacion_id
+                WHERE idPago = :id
+                AND estado = 'registrado'";
+        
+        return $this->db->execute($sql, [
+            'id' => $id,
+            'usuario_confirmacion_id' => $usuarioConfirmacionId
+        ]);
     }
 
-    // obtiene resumen de ingresos por periodo
+    // Anula un pago
+    public function anular($id, $usuarioId = null) {
+        $sql = "UPDATE pagos 
+                SET estado = 'anulado',
+                    usuario_confirmacion_id = COALESCE(:usuario_confirmacion_id, usuario_confirmacion_id)
+                WHERE idPago = :id
+                AND estado IN ('registrado', 'confirmado')";
+        
+        return $this->db->execute($sql, [
+            'id' => $id,
+            'usuario_confirmacion_id' => $usuarioId
+        ]);
+    }
+
+    // Obtiene resumen de ingresos por periodo
     public function getResumenIngresos($fechaInicio, $fechaFin) {
         $sql = "SELECT 
                     COUNT(*) as total_pagos,
-                    SUM(monto) as total_monto,
-                    AVG(monto) as promedio_monto,
-                    MIN(monto) as monto_minimo,
-                    MAX(monto) as monto_maximo
-                FROM pagos
-                WHERE fecha_pago BETWEEN :fecha_inicio AND :fecha_fin
-                AND estado != 'anulado'";
+                    SUM(p.monto) as total_monto,
+                    AVG(p.monto) as promedio_monto,
+                    MIN(p.monto) as monto_minimo,
+                    MAX(p.monto) as monto_maximo
+                FROM pagos p
+                WHERE p.fecha_pago BETWEEN :fecha_inicio AND :fecha_fin
+                AND p.estado = 'confirmado'";
         
         return $this->db->queryOne($sql, [
             'fecha_inicio' => $fechaInicio,
@@ -172,17 +250,17 @@ class PagoRepository{
         ]);
     }
 
-    // obtiene ingresos agrupados por método de pago
+    // Obtiene ingresos agrupados por método de pago
     public function getIngresosPorMetodo($fechaInicio, $fechaFin) {
         $sql = "SELECT 
-                    m.nombre as metodo,
-                    COUNT(p.idPagos) as cantidad,
+                    mp.nombre as metodo,
+                    COUNT(p.idPago) as cantidad,
                     SUM(p.monto) as total
                 FROM pagos p
-                INNER JOIN metodo_pago m ON p.metodo_pago_id = m.idMetodo
+                INNER JOIN metodo_pago mp ON p.metodo_pago_id = mp.idMetodo
                 WHERE p.fecha_pago BETWEEN :fecha_inicio AND :fecha_fin
-                AND p.estado != 'anulado'
-                GROUP BY m.idMetodo, m.nombre
+                AND p.estado = 'confirmado'
+                GROUP BY mp.idMetodo, mp.nombre
                 ORDER BY total DESC";
         
         return $this->db->query($sql, [
@@ -191,17 +269,18 @@ class PagoRepository{
         ]);
     }
 
-    // obtiene ingresos agrupados por concepto
+    // Obtiene ingresos agrupados por concepto
     public function getIngresosPorConcepto($fechaInicio, $fechaFin) {
         $sql = "SELECT 
-                    COALESCE(cp.nombre_completo, p.concepto_texto) as concepto,
-                    COUNT(p.idPagos) as cantidad,
+                    cp.nombre_completo as concepto,
+                    COUNT(p.idPago) as cantidad,
                     SUM(p.monto) as total
                 FROM pagos p
-                LEFT JOIN conceptos_pago cp ON p.concepto_id = cp.idConcepto
+                INNER JOIN deudas d ON p.deuda_id = d.idDeuda
+                INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
                 WHERE p.fecha_pago BETWEEN :fecha_inicio AND :fecha_fin
-                AND p.estado != 'anulado'
-                GROUP BY concepto
+                AND p.estado = 'confirmado'
+                GROUP BY cp.idConcepto, cp.nombre_completo
                 ORDER BY total DESC";
         
         return $this->db->query($sql, [
@@ -210,21 +289,101 @@ class PagoRepository{
         ]);
     }
 
-    // obtiene todos los métodos de pago
+    // Obtiene todos los métodos de pago activos
     public function getMetodosPago() {
-        $sql = "SELECT * FROM metodo_pago WHERE activo = 'activo' ORDER BY nombre ASC";
+        $sql = "SELECT * FROM metodo_pago 
+                WHERE activo = 'activo' 
+                ORDER BY orden ASC, nombre ASC";
         return $this->db->query($sql);
     }
 
-    // obtiene todos los conceptos de pago
+    // Obtiene todos los conceptos de pago activos
     public function getConceptosPago() {
-        $sql = "SELECT * FROM conceptos_pago WHERE estado = 'activo' ORDER BY nombre_completo ASC";
+        $sql = "SELECT * FROM conceptos_pago 
+                WHERE estado = 'activo' 
+                ORDER BY nombre_completo ASC";
         return $this->db->query($sql);
     }
 
+    // Obtiene pagos de un colegiado
+    public function findByColegiado($colegiadoId, $limit = 50) {
+        $sql = "SELECT p.*,
+                       c.nombres, c.apellido_paterno, c.apellido_materno,
+                       c.numero_colegiatura,
+                       d.descripcion_deuda as deuda_descripcion,
+                       cp.nombre_completo as deuda_concepto,
+                       mp.nombre as metodo_nombre
+                FROM pagos p
+                INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
+                INNER JOIN deudas d ON p.deuda_id = d.idDeuda
+                INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
+                INNER JOIN metodo_pago mp ON p.metodo_pago_id = mp.idMetodo
+                WHERE p.colegiado_id = :colegiado_id
+                ORDER BY p.fecha_pago DESC
+                LIMIT :limit";
+        
+        $results = $this->db->query($sql, [
+            'colegiado_id' => $colegiadoId,
+            'limit' => $limit
+        ]);
+        
+        $pagos = [];
+        foreach ($results as $row) {
+            $pagos[] = new Pago($row);
+        }
+        
+        return $pagos;
+    }
 
+    // Verifica si existe un comprobante con el mismo número
+    public function existeComprobante($numeroComprobante, $metodoPagoId, $excluirId = null) {
+        if ($excluirId) {
+            $sql = "SELECT COUNT(*) as total 
+                    FROM pagos 
+                    WHERE numero_comprobante = :comprobante 
+                    AND metodo_pago_id = :metodo_id
+                    AND idPago != :excluir_id";
+            
+            $params = [
+                'comprobante' => $numeroComprobante,
+                'metodo_id' => $metodoPagoId,
+                'excluir_id' => $excluirId
+            ];
+        } else {
+            $sql = "SELECT COUNT(*) as total 
+                    FROM pagos 
+                    WHERE numero_comprobante = :comprobante 
+                    AND metodo_pago_id = :metodo_id";
+            
+            $params = [
+                'comprobante' => $numeroComprobante,
+                'metodo_id' => $metodoPagoId
+            ];
+        }
+        
+        $result = $this->db->queryOne($sql, $params);
+        return $result['total'] > 0;
+    }
 
-    // GESTIÓN DE CONCEPTOS DE PAGO
+    // Obtiene total de pagos por período
+    public function getTotalPorPeriodo($fechaInicio, $fechaFin) {
+        $sql = "SELECT 
+                    SUM(CASE WHEN estado = 'confirmado' THEN monto ELSE 0 END) as total_confirmado,
+                    SUM(CASE WHEN estado = 'registrado' THEN monto ELSE 0 END) as total_registrado,
+                    SUM(CASE WHEN estado = 'anulado' THEN monto ELSE 0 END) as total_anulado,
+                    COUNT(CASE WHEN estado = 'confirmado' THEN 1 END) as cantidad_confirmados,
+                    COUNT(CASE WHEN estado = 'registrado' THEN 1 END) as cantidad_registrados,
+                    COUNT(CASE WHEN estado = 'anulado' THEN 1 END) as cantidad_anulados
+                FROM pagos
+                WHERE fecha_pago BETWEEN :fecha_inicio AND :fecha_fin";
+        
+        return $this->db->queryOne($sql, [
+            'fecha_inicio' => $fechaInicio,
+            'fecha_fin' => $fechaFin
+        ]);
+    }
+
+    // GESTIÓN DE CONCEPTOS DE PAGO (Administración)
     public function getAllConceptos() {
         $sql = "SELECT * FROM conceptos_pago ORDER BY nombre_completo ASC";
         return $this->db->query($sql);
@@ -236,8 +395,14 @@ class PagoRepository{
     }
     
     public function createConcepto($data) {
-        $sql = "INSERT INTO conceptos_pago (nombre_completo, descripcion, monto_sugerido, tipo_concepto, requiere_comprobante, estado)
-                VALUES (:nombre, :descripcion, :monto, :tipo, :requiere, :estado)";
+        $sql = "INSERT INTO conceptos_pago (
+                    nombre_completo, descripcion, monto_sugerido, 
+                    tipo_concepto, requiere_comprobante, es_recurrente,
+                    frecuencia, dia_vencimiento, estado
+                ) VALUES (
+                    :nombre, :descripcion, :monto, :tipo, :requiere,
+                    :es_recurrente, :frecuencia, :dia_vencimiento, :estado
+                )";
         return $this->db->insert($sql, $data);
     }
     
@@ -248,6 +413,9 @@ class PagoRepository{
                     monto_sugerido = :monto, 
                     tipo_concepto = :tipo,
                     requiere_comprobante = :requiere,
+                    es_recurrente = :es_recurrente,
+                    frecuencia = :frecuencia,
+                    dia_vencimiento = :dia_vencimiento,
                     estado = :estado
                 WHERE idConcepto = :id";
         $data['id'] = $id;
@@ -261,7 +429,7 @@ class PagoRepository{
 
     // GESTIÓN DE MÉTODOS DE PAGO
     public function getAllMetodos() {
-        $sql = "SELECT * FROM metodo_pago ORDER BY nombre ASC";
+        $sql = "SELECT * FROM metodo_pago ORDER BY orden ASC, nombre ASC";
         return $this->db->query($sql);
     }
     
@@ -271,15 +439,24 @@ class PagoRepository{
     }
     
     public function createMetodo($data) {
-        $sql = "INSERT INTO metodo_pago (nombre, descripcion, activo)
-                VALUES (:nombre, :descripcion, :activo)";
+        $sql = "INSERT INTO metodo_pago (
+                    codigo, nombre, descripcion, requiere_comprobante,
+                    datos_adicionales, orden, activo
+                ) VALUES (
+                    :codigo, :nombre, :descripcion, :requiere_comprobante,
+                    :datos_adicionales, :orden, :activo
+                )";
         return $this->db->insert($sql, $data);
     }
     
     public function updateMetodo($id, $data) {
         $sql = "UPDATE metodo_pago 
-                SET nombre = :nombre, 
+                SET codigo = :codigo,
+                    nombre = :nombre, 
                     descripcion = :descripcion, 
+                    requiere_comprobante = :requiere_comprobante,
+                    datos_adicionales = :datos_adicionales,
+                    orden = :orden,
                     activo = :activo
                 WHERE idMetodo = :id";
         $data['id'] = $id;
@@ -289,5 +466,20 @@ class PagoRepository{
     public function deleteMetodo($id) {
         $sql = "UPDATE metodo_pago SET activo = 'inactivo' WHERE idMetodo = :id";
         return $this->db->execute($sql, ['id' => $id]);
+    }
+
+    // Obtiene deudas pendientes de un colegiado
+    public function getDeudasPendientes($colegiadoId) {
+        $sql = "SELECT d.*, 
+                       cp.nombre_completo as concepto_nombre,
+                       cp.descripcion as concepto_descripcion
+                FROM deudas d
+                INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
+                WHERE d.colegiado_id = :colegiado_id
+                AND d.estado IN ('pendiente', 'vencido', 'parcial')
+                AND d.saldo_pendiente > 0
+                ORDER BY d.fecha_vencimiento ASC";
+        
+        return $this->db->query($sql, ['colegiado_id' => $colegiadoId]);
     }
 }

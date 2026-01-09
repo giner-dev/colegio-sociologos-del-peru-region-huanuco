@@ -1,28 +1,27 @@
 <?php
 require_once __DIR__ . '/../../core/Controller.php';
 
-class DashboardController extends Controller{
-    public function __construct(){
+class DashboardController extends Controller {
+    public function __construct() {
         parent::__construct();
     }
 
     // Pagina principal del panel
-    public function index(){
+    public function index() {
         $this->requireAuth();
-
         $estadisticas = $this->obtenerEstadisticas();
-
+        
         // Renderizar vista
-        $this->render('dashboard/index',[
+        $this->render('dashboard/index', [
             'estadisticas' => $estadisticas,
-            'active_menu' => 'dashboard', // Para que se active
+            'active_menu' => 'dashboard',
             'titulo' => 'Dashboard'
         ]);
     }
 
-    private function obtenerEstadisticas(){
+    private function obtenerEstadisticas() {
         $db = Database::getInstance();
-
+        
         // Total de colegiados
         $totalColegiados = $db->queryOne("SELECT COUNT(*) as total FROM colegiados");
         
@@ -36,13 +35,14 @@ class DashboardController extends Controller{
             "SELECT COUNT(*) as total FROM colegiados WHERE estado = 'inhabilitado'"
         );
         
-        // Total de deudas pendientes
+        // Total de deudas pendientes - CORREGIDO para nueva estructura
         $deudasPendientes = $db->queryOne(
-            "SELECT COUNT(*) as total, COALESCE(SUM(monto), 0) as monto_total 
-             FROM deudas WHERE estado IN ('pendiente', 'vencido')"
+            "SELECT COUNT(*) as total, COALESCE(SUM(saldo_pendiente), 0) as monto_total 
+             FROM deudas 
+             WHERE estado IN ('pendiente', 'parcial', 'vencido')"
         );
         
-        // Ingresos del mes actual
+        // Ingresos del mes actual - CORREGIDO nombre de tabla
         $ingresosMes = $db->queryOne(
             "SELECT COALESCE(SUM(monto), 0) as total 
              FROM pagos 
@@ -59,11 +59,11 @@ class DashboardController extends Controller{
              AND YEAR(fecha_egreso) = YEAR(CURRENT_DATE())"
         );
         
-        // Últimos pagos registrados
+        // Últimos pagos registrados - CORREGIDO nombre de columna y tabla
         $ultimosPagos = $db->query(
             "SELECT p.*, c.nombres, c.apellido_paterno, c.apellido_materno, c.numero_colegiatura
              FROM pagos p
-             INNER JOIN colegiados c ON p.colegiados_id = c.idColegiados
+             INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
              WHERE p.estado != 'anulado'
              ORDER BY p.fecha_registro DESC
              LIMIT 5"

@@ -154,7 +154,7 @@ class ExcelImportService{
         }
         
         // Verificar campos obligatorios
-        $obligatorios = ['numero_colegiatura', 'dni', 'nombres', 'apellido_paterno', 'apellido_materno', 'fecha_colegiatura'];
+        $obligatorios = ['dni', 'nombres', 'apellido_paterno', 'apellido_materno', 'fecha_colegiatura'];
         foreach ($obligatorios as $campo) {
             if (!isset($mapeo[$campo])) {
                 return [];
@@ -225,6 +225,11 @@ class ExcelImportService{
 
     // procesa un registro individual
     private function procesarRegistro($datos, $numeroFila) {
+        // Si no viene número de colegiatura, generar uno automáticamente
+        if (empty($datos['numero_colegiatura'])) {
+            $datos['numero_colegiatura'] = $this->colegiadoRepository->generarNumeroColegiatura();
+        }
+
         // Validar datos básicos
         $erroresFila = $this->validarDatosFila($datos, $numeroFila);
         
@@ -261,7 +266,6 @@ class ExcelImportService{
             'direccion' => $datos['direccion'] ?? null,
             'fecha_nacimiento' => $datos['fecha_nacimiento'] ?? null,
             'estado' => 'inhabilitado',
-            'estado_manual' => 0,
             'observaciones' => $datos['observaciones'] ?? null
         ];
         
@@ -284,9 +288,9 @@ class ExcelImportService{
     private function validarDatosFila($datos, $numeroFila) {
         $errores = [];
         
-        if (empty($datos['numero_colegiatura'])) {
-            $errores[] = 'Número de colegiatura vacío';
-        }
+        //if (empty($datos['numero_colegiatura'])) {
+        //    $errores[] = 'Número de colegiatura vacío';
+        //}
         
         if (empty($datos['dni'])) {
             $errores[] = 'DNI vacío';
@@ -324,7 +328,7 @@ class ExcelImportService{
         
         // Encabezados
         $encabezados = [
-            'Numero de Colegiatura',
+            'Numero de Colegiatura (Opcional)',
             'DNI',
             'Nombres',
             'Apellido Paterno',
@@ -349,7 +353,7 @@ class ExcelImportService{
         // Agregar algunas filas de ejemplo
         $ejemplos = [
             ['12345', '12345678', 'Juan Carlos', 'Pérez', 'García', '2020-01-15', '987654321', 'juan@email.com', 'Av. Principal 123', '1990-05-20', ''],
-            ['12346', '87654321', 'María Elena', 'López', 'Ramírez', '2021-03-10', '912345678', 'maria@email.com', 'Jr. Secundaria 456', '1985-08-15', 'Ejemplo']
+            ['', '87654321', 'María Elena', 'López', 'Ramírez', '2021-03-10', '912345678', 'maria@email.com', 'Jr. Secundaria 456', '1985-08-15', 'Se generará automáticamente']
         ];
         
         $fila = 2;

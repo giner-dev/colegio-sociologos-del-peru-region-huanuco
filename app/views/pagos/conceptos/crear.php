@@ -1,13 +1,18 @@
 <div class="page-header">
-    <h2>
-        <i class="fas fa-plus-circle me-2" style="color: #B91D22;"></i>
-        Nuevo Concepto de Pago
-    </h2>
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>
+            <i class="fas fa-plus-circle me-2" style="color: #B91D22;"></i>
+            Nuevo Concepto de Pago
+        </h2>
+        <a href="<?php echo url('pagos/conceptos'); ?>" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Volver
+        </a>
+    </div>
 </div>
 
 <div class="card">
     <div class="card-body">
-        <form method="POST" action="<?php echo url('pagos/conceptos/guardar'); ?>">
+        <form method="POST" action="<?php echo url('pagos/conceptos/guardar'); ?>" id="formConcepto">
             <div class="row">
                 <div class="col-md-8 mb-3">
                     <label class="form-label required">Nombre del Concepto</label>
@@ -45,16 +50,51 @@
                     <small class="text-muted">Puede ser 0 si el monto varía</small>
                 </div>
                 
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">¿Es Recurrente?</label>
+                    <select name="es_recurrente" id="esRecurrente" class="form-select">
+                        <option value="0" selected>No</option>
+                        <option value="1">Sí</option>
+                    </select>
+                    <small class="text-muted">Si se genera automáticamente</small>
+                </div>
+                
+                <div class="col-md-3 mb-3" id="frecuenciaContainer" style="display: none;">
+                    <label class="form-label">Frecuencia</label>
+                    <select name="frecuencia" id="selectFrecuencia" class="form-select">
+                        <option value="">Seleccione...</option>
+                        <option value="mensual">Mensual</option>
+                        <option value="trimestral">Trimestral</option>
+                        <option value="semestral">Semestral</option>
+                        <option value="anual">Anual</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 mb-3" id="diaVencimientoContainer" style="display: none;">
+                    <label class="form-label">Día de Vencimiento</label>
+                    <input type="number" name="dia_vencimiento" id="inputDiaVencimiento" 
+                           class="form-control" min="1" max="31" placeholder="Ej: 15">
+                    <small class="text-muted">Día del mes (1-31)</small>
+                </div>
+            </div>
+            
+            <div class="row">
                 <div class="col-md-6 mb-3">
                     <label class="form-label">Opciones</label>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="requiere_comprobante" 
                                id="requiereComprobante" value="1" checked>
                         <label class="form-check-label" for="requiereComprobante">
-                            Requiere número de comprobante
+                            Requiere número de comprobante al registrar pago
                         </label>
                     </div>
                 </div>
+            </div>
+            
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Nota sobre conceptos recurrentes:</strong> Si marca este concepto como recurrente, 
+                deberá configurar la programación de deudas automáticas para cada colegiado desde el módulo de deudas.
             </div>
             
             <div class="row">

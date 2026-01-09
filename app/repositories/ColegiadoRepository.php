@@ -19,7 +19,7 @@ class ColegiadoRepository{
         
         // Obtener registros de la página actual
         $sql = "SELECT * FROM colegiados 
-                ORDER BY apellido_paterno ASC, apellido_materno ASC 
+                ORDER BY idColegiados DESC 
                 LIMIT :limit OFFSET :offset";
         
         $results = $this->db->query($sql, [
@@ -112,6 +112,37 @@ class ColegiadoRepository{
         return $colegiados;
     }
 
+
+    // obtener ultimo númoro de colegiatura
+    public function obtenerUltimoNumeroColegiatura() {
+        $sql = "SELECT numero_colegiatura 
+                FROM colegiados 
+                ORDER BY CAST(numero_colegiatura AS UNSIGNED) DESC 
+                LIMIT 1";
+
+        $result = $this->db->queryOne($sql);
+        
+        if ($result && !empty($result['numero_colegiatura'])) {
+            return $result['numero_colegiatura'];
+        }
+
+        return null;
+    }
+
+    public function generarNumeroColegiatura() {
+        $ultimo = $this->obtenerUltimoNumeroColegiatura();
+        
+        if ($ultimo === null) {
+            return '1';
+        }
+
+        $numero = intval($ultimo);
+        $nuevoNumero = $numero + 1;
+
+        return (string)$nuevoNumero;
+    }
+
+
     // Buscar un colegiado por id
     public function findById($id) {
         $sql = "SELECT * FROM colegiados WHERE idColegiados = :id";
@@ -190,11 +221,11 @@ class ColegiadoRepository{
         $sql = "INSERT INTO colegiados (
                     numero_colegiatura, dni, nombres, apellido_paterno, apellido_materno,
                     fecha_colegiatura, telefono, correo, direccion, fecha_nacimiento,
-                    estado, estado_manual, observaciones
+                    estado, observaciones
                 ) VALUES (
                     :numero_colegiatura, :dni, :nombres, :apellido_paterno, :apellido_materno,
                     :fecha_colegiatura, :telefono, :correo, :direccion, :fecha_nacimiento,
-                    :estado, :estado_manual, :observaciones
+                    :estado, :observaciones
                 )";
         
         return $this->db->insert($sql, $data);
@@ -221,13 +252,17 @@ class ColegiadoRepository{
     }
 
     // cambiar el estado de un colegiado
-    public function cambiarEstado($id, $nuevoEstado, $esManual = true) {
-        $sql = "UPDATE colegiados SET estado = :estado, estado_manual = :manual WHERE idColegiados = :id";
+    public function cambiarEstado($id, $nuevoEstado, $motivo = null){
+        $sql = "UPDATE colegiados SET 
+                estado = :estado, 
+                motivo_inhabilitacion = :motivo,
+                fecha_cambio_estado = NOW() 
+            WHERE idColegiados = :id";
         return $this->db->execute($sql, [
-            'id' => $id,
-            'estado' => $nuevoEstado,
-            'manual' => $esManual ? 1 : 0
-        ]);
+                'id' => $id,
+                'estado' => $nuevoEstado,
+                'motivo' => $motivo ?? null
+            ]);
     }
 
     // actualizar la foto de un colegiado
@@ -270,14 +305,21 @@ class ColegiadoRepository{
 
     // verifica si existe un número de colegiatura
     public function existeNumeroColegiatura($numero, $excludeId = null) {
-        if ($excludeId) {
-            $sql = "SELECT COUNT(*) as total FROM colegiados WHERE numero_colegiatura = :numero AND idColegiados != :id";
-            $result = $this->db->queryOne($sql, ['numero' => $numero, 'id' => $excludeId]);
-        } else {
-            $sql = "SELECT COUNT(*) as total FROM colegiados WHERE numero_colegiatura = :numero";
-            $result = $this->db->queryOne($sql, ['numero' => $numero]);
-        }
+        $numeroInt = intval($numero);
         
+        if ($excludeId) {
+            $sql = "SELECT COUNT(*) as total 
+                    FROM colegiados 
+                    WHERE CAST(numero_colegiatura AS UNSIGNED) = :numero 
+                    AND idColegiados != :id";
+            $result = $this->db->queryOne($sql, ['numero' => $numeroInt, 'id' => $excludeId]);
+        } else {
+            $sql = "SELECT COUNT(*) as total 
+                    FROM colegiados 
+                    WHERE CAST(numero_colegiatura AS UNSIGNED) = :numero";
+            $result = $this->db->queryOne($sql, ['numero' => $numeroInt]);
+        }
+
         return $result['total'] > 0;
     }
 
@@ -314,21 +356,49 @@ class ColegiadoRepository{
 
     // obtiene el historial de pagos de un colegiado
     public function getHistorialPagos($idColegiado) {
-        $sql = "SELECT p.*, cp.nombre_completo as concepto_nombre, u.nombre_usuario
+        $sql = "SELECT 
+                    p.idPago,
+                    p.monto,
+                    p.fecha_pago,
+                    p.fecha_registro_pago,
+                    p.numero_comprobante,
+                    p.estado,
+                    p.observaciones,
+                    d.descripcion_deuda,
+                    c.nombre_completo as concepto_nombre,
+                    mp.nombre as metodo_pago_nombre,
+                    u.nombre_usuario
                 FROM pagos p
-                LEFT JOIN conceptos_pago cp ON p.concepto_id = cp.idConcepto
+                INNER JOIN deudas d ON p.deuda_id = d.idDeuda
+                LEFT JOIN conceptos_pago c ON d.concepto_id = c.idConcepto
+                LEFT JOIN metodo_pago mp ON p.metodo_pago_id = mp.idMetodo
                 LEFT JOIN usuarios u ON p.usuario_registro_id = u.idUsuario
-                WHERE p.colegiados_id = :id
+                WHERE p.colegiado_id = :id
                 ORDER BY p.fecha_pago DESC";
-        
+
         return $this->db->query($sql, ['id' => $idColegiado]);
     }
 
     // obtener las deudas de un colegiado
     public function getDeudas($idColegiado) {
-        $sql = "SELECT * FROM deudas 
-                WHERE colegiado_id = :id 
-                ORDER BY fecha_vencimiento ASC";
+        $sql = "SELECT 
+                    d.idDeuda,
+                    d.descripcion_deuda,
+                    d.monto_esperado,
+                    d.monto_pagado,
+                    d.saldo_pendiente,
+                    d.fecha_generacion,
+                    d.fecha_vencimiento,
+                    d.fecha_maxima_pago,
+                    d.estado,
+                    d.origen,
+                    d.observaciones,
+                    c.nombre_completo as concepto_nombre,
+                    c.tipo_concepto
+                FROM deudas d
+                LEFT JOIN conceptos_pago c ON d.concepto_id = c.idConcepto
+                WHERE d.colegiado_id = :id 
+                ORDER BY d.fecha_vencimiento ASC";
         
         return $this->db->query($sql, ['id' => $idColegiado]);
     }

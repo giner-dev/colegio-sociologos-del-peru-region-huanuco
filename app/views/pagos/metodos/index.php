@@ -20,16 +20,19 @@
             <table class="table table-hover table-striped">
                 <thead class="table-dark">
                     <tr>
-                        <th width="30%">Método de Pago</th>
-                        <th width="50%">Descripción</th>
+                        <th width="10%">Código</th>
+                        <th width="25%">Método de Pago</th>
+                        <th width="30%">Descripción</th>
+                        <th width="10%">Orden</th>
+                        <th width="10%">Comprobante</th>
                         <th width="10%">Estado</th>
-                        <th width="10%" class="text-center">Acciones</th>
+                        <th width="5%" class="text-center">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($metodos)): ?>
                         <tr>
-                            <td colspan="4" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 <i class="fas fa-info-circle me-2"></i>
                                 No hay métodos de pago registrados
                             </td>
@@ -37,8 +40,17 @@
                     <?php else: ?>
                         <?php foreach ($metodos as $metodo): ?>
                             <tr>
+                                <td><code><?php echo e($metodo['codigo']); ?></code></td>
                                 <td><strong><?php echo e($metodo['nombre']); ?></strong></td>
                                 <td><?php echo e($metodo['descripcion'] ?: '-'); ?></td>
+                                <td class="text-center"><?php echo $metodo['orden']; ?></td>
+                                <td class="text-center">
+                                    <?php if ($metodo['requiere_comprobante']): ?>
+                                        <i class="fas fa-check-circle text-success" title="Requiere comprobante"></i>
+                                    <?php else: ?>
+                                        <i class="fas fa-times-circle text-muted" title="No requiere comprobante"></i>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <?php if ($metodo['activo'] === 'activo'): ?>
                                         <span class="badge bg-success">Activo</span>
@@ -67,27 +79,3 @@
         </div>
     </div>
 </div>
-
-<script src="<?php echo url('assets/js/pagos.js'); ?>"></script>
-<script>
-function eliminarMetodo(id) {
-    Swal.fire({
-        title: '¿Desactivar este método?',
-        text: 'Los pagos existentes no se verán afectados',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#B91D22',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, desactivar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '<?php echo url('pagos/metodos/eliminar/'); ?>' + id;
-            document.body.appendChild(form);
-            form.submit();
-        }
-    });
-}
-</script>

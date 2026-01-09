@@ -1,13 +1,18 @@
 <div class="page-header">
-    <h2>
-        <i class="fas fa-edit me-2" style="color: #B91D22;"></i>
-        Editar Concepto de Pago
-    </h2>
+    <div class="d-flex justify-content-between align-items-center">
+        <h2>
+            <i class="fas fa-edit me-2" style="color: #B91D22;"></i>
+            Editar Concepto de Pago
+        </h2>
+        <a href="<?php echo url('pagos/conceptos'); ?>" class="btn btn-secondary">
+            <i class="fas fa-arrow-left me-1"></i> Volver
+        </a>
+    </div>
 </div>
 
 <div class="card">
     <div class="card-body">
-        <form method="POST" action="<?php echo url('pagos/conceptos/actualizar/' . $concepto['idConcepto']); ?>">
+        <form method="POST" action="<?php echo url('pagos/conceptos/actualizar/' . $concepto['idConcepto']); ?>" id="formConcepto">
             <div class="row">
                 <div class="col-md-8 mb-3">
                     <label class="form-label required">Nombre del Concepto</label>
@@ -37,7 +42,7 @@
             <div class="row">
                 <div class="col-md-12 mb-3">
                     <label class="form-label">Descripción</label>
-                    <textarea name="descripcion" class="form-control" rows="2"><?php echo e($concepto['descripcion']); ?></textarea>
+                    <textarea name="descripcion" class="form-control" rows="2"><?php echo e($concepto['descripcion'] ?? ''); ?></textarea>
                 </div>
             </div>
             
@@ -51,6 +56,36 @@
                     </div>
                 </div>
                 
+                <div class="col-md-3 mb-3">
+                    <label class="form-label">¿Es Recurrente?</label>
+                    <select name="es_recurrente" id="esRecurrente" class="form-select">
+                        <option value="0" <?php echo !$concepto['es_recurrente'] ? 'selected' : ''; ?>>No</option>
+                        <option value="1" <?php echo $concepto['es_recurrente'] ? 'selected' : ''; ?>>Sí</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 mb-3" id="frecuenciaContainer" style="<?php echo $concepto['es_recurrente'] ? '' : 'display: none;'; ?>">
+                    <label class="form-label">Frecuencia</label>
+                    <select name="frecuencia" id="selectFrecuencia" class="form-select">
+                        <option value="">Seleccione...</option>
+                        <option value="mensual" <?php echo ($concepto['frecuencia'] ?? '') === 'mensual' ? 'selected' : ''; ?>>Mensual</option>
+                        <option value="trimestral" <?php echo ($concepto['frecuencia'] ?? '') === 'trimestral' ? 'selected' : ''; ?>>Trimestral</option>
+                        <option value="semestral" <?php echo ($concepto['frecuencia'] ?? '') === 'semestral' ? 'selected' : ''; ?>>Semestral</option>
+                        <option value="anual" <?php echo ($concepto['frecuencia'] ?? '') === 'anual' ? 'selected' : ''; ?>>Anual</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3 mb-3" id="diaVencimientoContainer" style="<?php echo $concepto['es_recurrente'] ? '' : 'display: none;'; ?>">
+                    <label class="form-label">Día de Vencimiento</label>
+                    <input type="number" name="dia_vencimiento" id="inputDiaVencimiento" 
+                           class="form-control" min="1" max="31" 
+                           value="<?php echo $concepto['dia_vencimiento'] ?? ''; ?>" 
+                           placeholder="Ej: 15">
+                    <small class="text-muted">Día del mes (1-31)</small>
+                </div>
+            </div>
+            
+            <div class="row">
                 <div class="col-md-4 mb-3">
                     <label class="form-label">Estado</label>
                     <select name="estado" class="form-select">
@@ -63,7 +98,7 @@
                     </select>
                 </div>
                 
-                <div class="col-md-4 mb-3">
+                <div class="col-md-8 mb-3">
                     <label class="form-label">Opciones</label>
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" name="requiere_comprobante" 
@@ -75,6 +110,15 @@
                     </div>
                 </div>
             </div>
+            
+            <?php if ($concepto['es_recurrente']): ?>
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Advertencia:</strong> Este concepto está marcado como recurrente. 
+                Modificar los valores de frecuencia o día de vencimiento afectará la generación 
+                futura de deudas automáticas, pero no las ya generadas.
+            </div>
+            <?php endif; ?>
             
             <div class="row">
                 <div class="col-md-12">

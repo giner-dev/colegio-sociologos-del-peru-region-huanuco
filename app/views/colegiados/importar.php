@@ -18,7 +18,8 @@
     <ul class="mb-0">
         <li>El archivo debe estar en formato Excel (.xlsx o .xls)</li>
         <li>La primera fila debe contener los encabezados de las columnas</li>
-        <li>Las columnas obligatorias son: Número de Colegiatura, DNI, Nombres, Apellido Paterno, Apellido Materno, Fecha de Colegiatura</li>
+        <li><strong>Las columnas obligatorias son:</strong> DNI, Nombres, Apellido Paterno, Apellido Materno, Fecha de Colegiatura</li>
+        <li><strong>Número de Colegiatura:</strong> Si se deja vacío, se generará automáticamente</li>
         <li>Puede incluir columnas opcionales: Teléfono, Correo, Dirección, Fecha de Nacimiento, Observaciones</li>
         <li>El sistema validará cada registro antes de importarlo</li>
     </ul>

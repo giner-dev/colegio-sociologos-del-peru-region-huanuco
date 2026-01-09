@@ -23,6 +23,7 @@
                         <th>Concepto</th>
                         <th>Tipo</th>
                         <th>Monto Sugerido</th>
+                        <th>Recurrente</th>
                         <th>Requiere Comprobante</th>
                         <th>Estado</th>
                         <th class="text-center">Acciones</th>
@@ -31,7 +32,7 @@
                 <tbody>
                     <?php if (empty($conceptos)): ?>
                         <tr>
-                            <td colspan="6" class="text-center text-muted py-4">
+                            <td colspan="7" class="text-center text-muted py-4">
                                 <i class="fas fa-info-circle me-2"></i>
                                 No hay conceptos registrados
                             </td>
@@ -44,6 +45,15 @@
                                     <?php if ($concepto['descripcion']): ?>
                                         <br><small class="text-muted"><?php echo e($concepto['descripcion']); ?></small>
                                     <?php endif; ?>
+                                    <?php if ($concepto['es_recurrente']): ?>
+                                        <br><small class="text-info">
+                                            <i class="fas fa-redo me-1"></i>
+                                            <?php echo ucfirst(e($concepto['frecuencia'])); ?> 
+                                            <?php if ($concepto['dia_vencimiento']): ?>
+                                                - Día <?php echo $concepto['dia_vencimiento']; ?>
+                                            <?php endif; ?>
+                                        </small>
+                                    <?php endif; ?>
                                 </td>
                                 <td>
                                     <span class="badge bg-secondary">
@@ -52,10 +62,17 @@
                                 </td>
                                 <td><strong class="text-success"><?php echo formatMoney($concepto['monto_sugerido']); ?></strong></td>
                                 <td class="text-center">
-                                    <?php if ($concepto['requiere_comprobante']): ?>
-                                        <i class="fas fa-check-circle text-success"></i>
+                                    <?php if ($concepto['es_recurrente']): ?>
+                                        <i class="fas fa-check-circle text-success" title="Recurrente"></i>
                                     <?php else: ?>
-                                        <i class="fas fa-times-circle text-muted"></i>
+                                        <i class="fas fa-times-circle text-muted" title="No recurrente"></i>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($concepto['requiere_comprobante']): ?>
+                                        <i class="fas fa-check-circle text-success" title="Requiere comprobante"></i>
+                                    <?php else: ?>
+                                        <i class="fas fa-times-circle text-muted" title="No requiere comprobante"></i>
                                     <?php endif; ?>
                                 </td>
                                 <td>
@@ -86,27 +103,3 @@
         </div>
     </div>
 </div>
-
-<script src="<?php echo url('assets/js/pagos.js'); ?>"></script>
-<script>
-function eliminarConcepto(id) {
-    Swal.fire({
-        title: '¿Desactivar este concepto?',
-        text: 'Los pagos existentes no se verán afectados',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#B91D22',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Sí, desactivar',
-        cancelButtonText: 'Cancelar'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '<?php echo url('pagos/conceptos/eliminar/'); ?>' + id;
-            document.body.appendChild(form);
-            form.submit();
-        }
-    });
-}
-</script>

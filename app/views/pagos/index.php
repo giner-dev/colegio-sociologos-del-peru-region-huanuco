@@ -16,7 +16,7 @@
 
 <!-- Filtros de búsqueda -->
 <div class="card mb-4">
-    <div class="card-header-red">
+    <div class="card-header bg-search">
         <i class="fas fa-filter me-2"></i> Filtros de Búsqueda
     </div>
     <div class="card-body">
@@ -30,6 +30,13 @@
                 </div>
                 
                 <div class="col-md-2">
+                    <label class="form-label">DNI</label>
+                    <input type="text" name="dni" class="form-control" 
+                           value="<?php echo e($filtros['dni'] ?? ''); ?>"
+                           placeholder="Buscar por DNI">
+                </div>
+                
+                <div class="col-md-2">
                     <label class="form-label">Fecha Inicio</label>
                     <input type="date" name="fecha_inicio" class="form-control" 
                            value="<?php echo e($filtros['fecha_inicio'] ?? ''); ?>">
@@ -40,8 +47,10 @@
                     <input type="date" name="fecha_fin" class="form-control" 
                            value="<?php echo e($filtros['fecha_fin'] ?? ''); ?>">
                 </div>
-                
-                <div class="col-md-2">
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-3">
                     <label class="form-label">Método de Pago</label>
                     <select name="metodo_pago" class="form-select">
                         <option value="">Todos</option>
@@ -55,25 +64,36 @@
                 </div>
                 
                 <div class="col-md-3">
+                    <label class="form-label">Concepto</label>
+                    <select name="concepto_id" class="form-select">
+                        <option value="">Todos</option>
+                        <?php foreach ($conceptos as $concepto): ?>
+                            <option value="<?php echo $concepto['idConcepto']; ?>"
+                                <?php echo ($filtros['concepto_id'] ?? '') == $concepto['idConcepto'] ? 'selected' : ''; ?>>
+                                <?php echo e($concepto['nombre_completo']); ?>
+                            </option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
                     <label class="form-label">Estado</label>
                     <select name="estado" class="form-select">
                         <option value="">Todos</option>
                         <option value="registrado" <?php echo ($filtros['estado'] ?? '') === 'registrado' ? 'selected' : ''; ?>>
                             Registrado
                         </option>
-                        <option value="validado" <?php echo ($filtros['estado'] ?? '') === 'validado' ? 'selected' : ''; ?>>
-                            Validado
+                        <option value="confirmado" <?php echo ($filtros['estado'] ?? '') === 'confirmado' ? 'selected' : ''; ?>>
+                            Confirmado
                         </option>
                         <option value="anulado" <?php echo ($filtros['estado'] ?? '') === 'anulado' ? 'selected' : ''; ?>>
                             Anulado
                         </option>
                     </select>
                 </div>
-            </div>
-            
-            <div class="row mt-3">
-                <div class="col-md-12 text-end">
-                    <a href="<?php echo url('pagos'); ?>" class="btn btn-secondary">
+                
+                <div class="col-md-3 d-flex align-items-end">
+                    <a href="<?php echo url('pagos'); ?>" class="btn btn-secondary me-2">
                         <i class="fas fa-times me-1"></i> Limpiar
                     </a>
                     <button type="submit" class="btn btn-primary">
@@ -100,6 +120,7 @@
                         <th>N° Colegiatura</th>
                         <th>Colegiado</th>
                         <th>Concepto</th>
+                        <th>Deuda</th>
                         <th>Monto</th>
                         <th>Método</th>
                         <th>Estado</th>
@@ -109,7 +130,7 @@
                 <tbody>
                     <?php if (empty($pagos)): ?>
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-4">
+                            <td colspan="9" class="text-center text-muted py-4">
                                 <i class="fas fa-info-circle me-2"></i>
                                 No se encontraron pagos
                             </td>
@@ -120,7 +141,12 @@
                                 <td><?php echo formatDate($pago->fecha_pago); ?></td>
                                 <td><strong><?php echo e($pago->numero_colegiatura); ?></strong></td>
                                 <td><?php echo e($pago->getNombreColegiado()); ?></td>
-                                <td><?php echo e($pago->concepto_nombre ?: $pago->concepto_texto); ?></td>
+                                <td><?php echo e($pago->getConcepto()); ?></td>
+                                <td>
+                                    <small class="text-muted">
+                                        <?php echo e($pago->deuda_descripcion); ?>
+                                    </small>
+                                </td>
                                 <td><strong class="text-success"><?php echo formatMoney($pago->monto); ?></strong></td>
                                 <td>
                                     <span class="badge bg-info">
@@ -128,19 +154,31 @@
                                     </span>
                                 </td>
                                 <td>
-                                    <?php if ($pago->estado === 'registrado'): ?>
-                                        <span class="badge bg-primary">Registrado</span>
-                                    <?php elseif ($pago->estado === 'validado'): ?>
-                                        <span class="badge bg-success">Validado</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-danger">Anulado</span>
-                                    <?php endif; ?>
+                                    <span class="badge bg-<?php echo $pago->getEstadoClase(); ?>">
+                                        <?php echo $pago->getEstadoTexto(); ?>
+                                    </span>
                                 </td>
                                 <td class="text-center">
-                                    <a href="<?php echo url('pagos/ver/' . $pago->idPagos); ?>" 
+                                    <a href="<?php echo url('pagos/ver/' . $pago->idPago); ?>" 
                                        class="btn btn-sm btn-info" title="Ver detalles">
                                         <i class="fas fa-eye"></i>
                                     </a>
+                                    
+                                    <?php if (hasRole(['administrador', 'tesorero']) && $pago->isRegistrado()): ?>
+                                        <button type="button" class="btn btn-sm btn-success" 
+                                                onclick="confirmarPago(<?php echo $pago->idPago; ?>)" 
+                                                title="Confirmar pago">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                    <?php endif; ?>
+                                    
+                                    <?php if (hasRole('administrador') && !$pago->isAnulado()): ?>
+                                        <button type="button" class="btn btn-sm btn-danger" 
+                                                onclick="anularPago(<?php echo $pago->idPago; ?>)" 
+                                                title="Anular pago">
+                                            <i class="fas fa-ban"></i>
+                                        </button>
+                                    <?php endif; ?>
                                 </td>
                             </tr>
                         <?php endforeach; ?>

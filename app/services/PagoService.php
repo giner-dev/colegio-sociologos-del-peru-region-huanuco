@@ -1,72 +1,181 @@
 <?php
 require_once __DIR__ . '/../repositories/PagoRepository.php';
 require_once __DIR__ . '/../repositories/ColegiadoRepository.php';
+require_once __DIR__ . '/../repositories/DeudaRepository.php';
 
-class PagoService{
+class PagoService {
+    private $db;
     private $pagoRepository;
     private $colegiadoRepository;
+    private $deudaRepository;
     
     public function __construct() {
+        $this->db = Database::getInstance();
         $this->pagoRepository = new PagoRepository();
         $this->colegiadoRepository = new ColegiadoRepository();
+        $this->deudaRepository = new DeudaRepository();
     }
 
-    // obtiene pagos con paginación
+    // Obtiene pagos con paginación
     public function obtenerPagos($page = 1, $perPage = 25, $filtros = []) {
         $pagos = $this->pagoRepository->findAllPaginated($page, $perPage, $filtros);
         $total = $this->pagoRepository->countAll($filtros);
+        
+        $conceptos = $this->pagoRepository->getConceptosPago();
+        $metodos = $this->pagoRepository->getMetodosPago();
         
         return [
             'pagos' => $pagos,
             'total' => $total,
             'page' => $page,
             'perPage' => $perPage,
-            'totalPages' => ceil($total / $perPage)
+            'totalPages' => ceil($total / $perPage),
+            'conceptos' => $conceptos,
+            'metodos' => $metodos
         ];
     }
 
-    // obtiene un pago por ID
+    // Obtiene un pago por ID
     public function obtenerPorId($id) {
         return $this->pagoRepository->findById($id);
     }
 
-    // registra un nuevo pago
+    // Registra un nuevo pago
     public function registrarPago($datos, $usuarioId) {
         $errores = $this->validarDatos($datos);
         if (!empty($errores)) {
             return ['success' => false, 'errors' => $errores];
         }
         
-        $colegiado = $this->colegiadoRepository->findById($datos['colegiados_id']);
-        if (!$colegiado) {
-            return ['success' => false, 'errors' => ['El colegiado no existe']];
+        // Verificar que la deuda existe
+        $deuda = $this->deudaRepository->findById($datos['deuda_id']);
+        if (!$deuda) {
+            return ['success' => false, 'errors' => ['La deuda no existe']];
         }
         
-        $datosInsert = [
-            'colegiados_id' => $datos['colegiados_id'],
-            'concepto_id' => !empty($datos['concepto_id']) ? $datos['concepto_id'] : null,
-            'concepto_texto' => !empty($datos['concepto_texto']) ? $datos['concepto_texto'] : null,
-            'monto' => $datos['monto'],
-            'fecha_pago' => $datos['fecha_pago'],
-            'estado' => 'registrado',
-            'metodo_pago_id' => $datos['metodo_pago_id'],
-            'numero_comprobante' => $datos['numero_comprobante'] ?? null,
-            'observaciones' => $datos['observaciones'] ?? null,
-            'usuario_registro_id' => $usuarioId,
-            'archivo_comprobante' => $datos['archivo_comprobante'] ?? null
-        ];
-        
-        $id = $this->pagoRepository->create($datosInsert);
-        
-        if ($id) {
-            logMessage("Pago registrado: ID $id - Colegiado {$colegiado->numero_colegiatura} - Monto {$datos['monto']}", 'info');
-            return ['success' => true, 'id' => $id];
+        // Verificar que el colegiado coincide
+        if ($deuda->colegiado_id != $datos['colegiado_id']) {
+            return ['success' => false, 'errors' => ['La deuda no pertenece al colegiado seleccionado']];
         }
         
-        return ['success' => false, 'errors' => ['Error al registrar el pago']];
+        // Verificar que la deuda esté pendiente
+        if ($deuda->isPagada() || $deuda->isCancelada()) {
+            return ['success' => false, 'errors' => ['La deuda ya está pagada o cancelada']];
+        }
+        
+        // Verificar que el monto no exceda el saldo pendiente
+        $saldoPendiente = $deuda->getSaldoPendiente();
+        if ($datos['monto'] > $saldoPendiente) {
+            return ['success' => false, 'errors' => [
+                'El monto excede el saldo pendiente de la deuda (S/ ' . 
+                number_format($saldoPendiente, 2) . ')'
+            ]];
+        }
+        
+        // Verificar comprobante único si aplica
+        if (!empty($datos['numero_comprobante'])) {
+            $metodo = $this->pagoRepository->findMetodoById($datos['metodo_pago_id']);
+            if ($metodo && $metodo['requiere_comprobante']) {
+                $existeComprobante = $this->pagoRepository->existeComprobante(
+                    $datos['numero_comprobante'], 
+                    $datos['metodo_pago_id']
+                );
+                
+                if ($existeComprobante) {
+                    return ['success' => false, 'errors' => ['El número de comprobante ya existe para este método de pago']];
+                }
+            }
+        }
+        
+        $this->db->beginTransaction();
+        
+        try {
+            // 1. Registrar el pago
+            $datosInsert = [
+                'colegiado_id' => $datos['colegiado_id'],
+                'deuda_id' => $datos['deuda_id'],
+                'monto' => $datos['monto'],
+                'fecha_pago' => $datos['fecha_pago'],
+                'fecha_registro_pago' => date('Y-m-d H:i:s'),
+                'metodo_pago_id' => $datos['metodo_pago_id'],
+                'numero_comprobante' => $datos['numero_comprobante'] ?? null,
+                'archivo_comprobante' => $datos['archivo_comprobante'] ?? null,
+                'estado' => 'registrado',
+                'observaciones' => $datos['observaciones'] ?? null,
+                'usuario_registro_id' => $usuarioId
+            ];
+            
+            $pagoId = $this->pagoRepository->create($datosInsert);
+            
+            if (!$pagoId) {
+                throw new Exception("Error al registrar el pago");
+            }
+            
+            // 2. Crear detalle de aplicación del pago
+            $detalleData = [
+                'pago_id' => $pagoId,
+                'deuda_id' => $datos['deuda_id'],
+                'monto_aplicado' => $datos['monto'],
+                'usuario_aplicacion_id' => $usuarioId
+            ];
+            
+            $detalleId = $this->pagoRepository->crearDetalleAplicacion($detalleData);
+            
+            if (!$detalleId) {
+                throw new Exception("Error al crear el detalle de aplicación");
+            }
+            
+            // 3. Actualizar la deuda
+            $nuevoMontoPagado = ($deuda->monto_pagado ?? 0) + $datos['monto'];
+            $this->deudaRepository->actualizarMontoPagado($datos['deuda_id'], $nuevoMontoPagado);
+            
+            // 4. Si el pago cubre completamente la deuda, confirmar automáticamente
+            if ($nuevoMontoPagado >= $deuda->monto_esperado) {
+                $this->pagoRepository->confirmar($pagoId, $usuarioId);
+            }
+            
+            // 5. Actualizar estado del colegiado
+            $this->actualizarEstadoColegiado($datos['colegiado_id']);
+            
+            $this->db->commit();
+            
+            logMessage("Pago registrado: ID $pagoId - Deuda: {$datos['deuda_id']} - Monto: {$datos['monto']}", 'info');
+            return ['success' => true, 'id' => $pagoId];
+            
+        } catch (Exception $e) {
+            $this->db->rollback();
+            logMessage("Error al registrar pago: " . $e->getMessage(), 'error');
+            return ['success' => false, 'errors' => ['Error interno: ' . $e->getMessage()]];
+        }
     }
 
-    // anula un pago
+    // Confirma un pago
+    public function confirmarPago($id, $usuarioId) {
+        $pago = $this->pagoRepository->findById($id);
+        
+        if (!$pago) {
+            return ['success' => false, 'message' => 'Pago no encontrado'];
+        }
+        
+        if ($pago->isConfirmado()) {
+            return ['success' => false, 'message' => 'El pago ya está confirmado'];
+        }
+        
+        if ($pago->isAnulado()) {
+            return ['success' => false, 'message' => 'No se puede confirmar un pago anulado'];
+        }
+        
+        $resultado = $this->pagoRepository->confirmar($id, $usuarioId);
+        
+        if ($resultado) {
+            logMessage("Pago confirmado: ID $id por usuario ID $usuarioId", 'info');
+            return ['success' => true, 'message' => 'Pago confirmado correctamente'];
+        }
+        
+        return ['success' => false, 'message' => 'Error al confirmar el pago'];
+    }
+
+    // Anula un pago (con reversión de la deuda)
     public function anularPago($id, $usuarioId) {
         $pago = $this->pagoRepository->findById($id);
         
@@ -74,60 +183,58 @@ class PagoService{
             return ['success' => false, 'message' => 'Pago no encontrado'];
         }
         
-        if ($pago->estado === 'anulado') {
+        if ($pago->isAnulado()) {
             return ['success' => false, 'message' => 'El pago ya está anulado'];
         }
         
-        $resultado = $this->pagoRepository->anular($id);
+        $this->db->beginTransaction();
         
-        if ($resultado) {
+        try {
+            // 1. Anular el pago
+            $resultado = $this->pagoRepository->anular($id, $usuarioId);
+            
+            if (!$resultado) {
+                throw new Exception("Error al anular el pago");
+            }
+            
+            // 2. Revertir el monto pagado en la deuda
+            $deuda = $this->deudaRepository->findById($pago->deuda_id);
+            if ($deuda) {
+                $nuevoMontoPagado = max(0, ($deuda->monto_pagado ?? 0) - $pago->monto);
+                $this->deudaRepository->actualizarMontoPagado($pago->deuda_id, $nuevoMontoPagado);
+            }
+            
+            // 3. Actualizar estado del colegiado
+            $this->actualizarEstadoColegiado($pago->colegiado_id);
+            
+            $this->db->commit();
+            
             logMessage("Pago anulado: ID $id por usuario ID $usuarioId", 'warning');
             return ['success' => true, 'message' => 'Pago anulado correctamente'];
+            
+        } catch (Exception $e) {
+            $this->db->rollback();
+            logMessage("Error al anular pago: " . $e->getMessage(), 'error');
+            return ['success' => false, 'message' => 'Error interno del sistema al anular el pago'];
         }
-        
-        return ['success' => false, 'message' => 'Error al anular el pago'];
     }
 
-    // valida un pago
-    public function validarPago($id, $usuarioId) {
-        $pago = $this->pagoRepository->findById($id);
-        
-        if (!$pago) {
-            return ['success' => false, 'message' => 'Pago no encontrado'];
-        }
-        
-        if ($pago->estado === 'validado') {
-            return ['success' => false, 'message' => 'El pago ya está validado'];
-        }
-        
-        if ($pago->estado === 'anulado') {
-            return ['success' => false, 'message' => 'No se puede validar un pago anulado'];
-        }
-        
-        $resultado = $this->pagoRepository->validar($id);
-        
-        if ($resultado) {
-            logMessage("Pago validado: ID $id por usuario ID $usuarioId", 'info');
-            return ['success' => true, 'message' => 'Pago validado correctamente'];
-        }
-        
-        return ['success' => false, 'message' => 'Error al validar el pago'];
-    }
-
-    // obtiene resumen de ingresos
+    // Obtiene resumen de ingresos
     public function obtenerResumen($fechaInicio, $fechaFin) {
         $resumen = $this->pagoRepository->getResumenIngresos($fechaInicio, $fechaFin);
         $porMetodo = $this->pagoRepository->getIngresosPorMetodo($fechaInicio, $fechaFin);
         $porConcepto = $this->pagoRepository->getIngresosPorConcepto($fechaInicio, $fechaFin);
+        $totales = $this->pagoRepository->getTotalPorPeriodo($fechaInicio, $fechaFin);
         
         return [
             'resumen' => $resumen,
             'por_metodo' => $porMetodo,
-            'por_concepto' => $porConcepto
+            'por_concepto' => $porConcepto,
+            'totales' => $totales
         ];
     }
 
-    // obtiene métodos y conceptos para formularios
+    // Obtiene métodos y conceptos para formularios
     public function obtenerOpcionesPago() {
         return [
             'metodos' => $this->pagoRepository->getMetodosPago(),
@@ -135,12 +242,16 @@ class PagoService{
         ];
     }
 
-    // valida datos del pago
+    // Valida datos del pago
     private function validarDatos($datos) {
         $errores = [];
         
-        if (empty($datos['colegiados_id'])) {
+        if (empty($datos['colegiado_id'])) {
             $errores[] = 'Debe seleccionar un colegiado';
+        }
+        
+        if (empty($datos['deuda_id'])) {
+            $errores[] = 'Debe seleccionar una deuda';
         }
         
         if (empty($datos['monto']) || $datos['monto'] <= 0) {
@@ -155,28 +266,72 @@ class PagoService{
             $errores[] = 'Debe seleccionar un método de pago';
         }
         
-        if (empty($datos['concepto_id']) && empty($datos['concepto_texto'])) {
-            $errores[] = 'Debe especificar un concepto de pago';
-        }
-        
         return $errores;
     }
 
-    // procesa archivo de comprobante
-    public function subirComprobante($id, $archivo) {
+    // Actualiza estado del colegiado según deudas
+    private function actualizarEstadoColegiado($colegiadoId) {
+        $tieneDeudas = $this->deudaRepository->tieneDeudasPendientes($colegiadoId);
+        $colegiado = $this->colegiadoRepository->findById($colegiadoId);
+        
+        if ($colegiado) {
+            $nuevoEstado = $tieneDeudas ? 'inhabilitado' : 'habilitado';
+            $motivoAutomatico = $tieneDeudas 
+                ? 'Inhabilitado automáticamente por deudas pendientes' 
+                : 'Habilitado automáticamente al pagar todas las deudas';
+            
+            if ($colegiado->estado !== $nuevoEstado) {
+                $this->colegiadoRepository->cambiarEstado($colegiadoId, $nuevoEstado, $motivoAutomatico);
+                
+                // Registrar en historial
+                $this->registrarCambioEstadoAutomatico($colegiadoId, $colegiado->estado, $nuevoEstado, $motivoAutomatico);
+                
+                logMessage("Estado de colegiado actualizado automáticamente: ID $colegiadoId -> $nuevoEstado", 'info');
+            }
+        }
+    }
+    
+    private function registrarCambioEstadoAutomatico($colegiadoId, $estadoAnterior, $estadoNuevo, $motivo) {
+        $sql = "INSERT INTO historial_estados (colegiado_id, estado_anterior, estado_nuevo, motivo, tipo_cambio, usuario_id)
+                VALUES (:colegiado_id, :estado_anterior, :estado_nuevo, :motivo, 'automatico', NULL)";
+        
+        try {
+            $this->db->execute($sql, [
+                'colegiado_id' => $colegiadoId,
+                'estado_anterior' => $estadoAnterior,
+                'estado_nuevo' => $estadoNuevo,
+                'motivo' => $motivo
+            ]);
+        } catch (Exception $e) {
+            logMessage("Error al registrar historial de estado automático: " . $e->getMessage(), 'error');
+        }
+    }
+
+    // Procesa archivo de comprobante
+    public function subirComprobante($archivo) {
         if ($archivo['error'] !== UPLOAD_ERR_OK) {
             return ['success' => false, 'message' => 'Error al subir el archivo'];
         }
         
-        $extensionesPermitidas = ['jpg', 'jpeg', 'png', 'pdf'];
+        $extensionesPermitidas = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'];
         $extension = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
         
         if (!in_array($extension, $extensionesPermitidas)) {
-            return ['success' => false, 'message' => 'Solo se permiten archivos JPG, PNG o PDF'];
+            return ['success' => false, 'message' => 'Solo se permiten archivos JPG, PNG, PDF o DOC'];
         }
         
-        $nombreArchivo = 'comprobante_' . $id . '_' . time() . '.' . $extension;
+        $maxSize = 5 * 1024 * 1024;
+        if ($archivo['size'] > $maxSize) {
+            return ['success' => false, 'message' => 'El archivo no debe exceder los 5MB'];
+        }
+        
+        $nombreArchivo = 'comprobante_' . date('Ymd_His') . '_' . uniqid() . '.' . $extension;
         $rutaDestino = basePath('public/uploads/comprobantes/' . $nombreArchivo);
+        
+        $directorio = dirname($rutaDestino);
+        if (!is_dir($directorio)) {
+            mkdir($directorio, 0777, true);
+        }
         
         if (move_uploaded_file($archivo['tmp_name'], $rutaDestino)) {
             return ['success' => true, 'ruta' => 'uploads/comprobantes/' . $nombreArchivo];
@@ -185,7 +340,37 @@ class PagoService{
         return ['success' => false, 'message' => 'Error al guardar el archivo'];
     }
 
+    // Obtiene deudas pendientes de un colegiado
+    public function obtenerDeudasPendientes($colegiadoId) {
+        // Asegurarse de que devolvemos datos estructurados
+        $deudas = $this->pagoRepository->getDeudasPendientes($colegiadoId);
+        
+        // Si getDeudasPendientes() devuelve arrays, convertirlos a formato consistente
+        $resultado = [];
+        foreach ($deudas as $deuda) {
+            if (is_array($deuda)) {
+                $resultado[] = [
+                    'idDeuda' => $deuda['idDeuda'] ?? $deuda['idDeuda'],
+                    'concepto_nombre' => $deuda['concepto_nombre'] ?? $deuda['nombre_completo'] ?? '',
+                    'descripcion_deuda' => $deuda['descripcion_deuda'] ?? '',
+                    'monto_esperado' => floatval($deuda['monto_esperado'] ?? 0),
+                    'monto_pagado' => floatval($deuda['monto_pagado'] ?? 0),
+                    'saldo_pendiente' => floatval($deuda['saldo_pendiente'] ?? 0),
+                    'fecha_vencimiento' => $deuda['fecha_vencimiento'] ?? '',
+                    'estado' => $deuda['estado'] ?? 'pendiente'
+                ];
+            } elseif (is_object($deuda)) {
+                $resultado[] = $deuda;
+            }
+        }
+        
+        return $resultado;
+    }
 
+    // Obtiene historial de pagos de un colegiado
+    public function obtenerHistorialColegiado($colegiadoId) {
+        return $this->pagoRepository->findByColegiado($colegiadoId, 100);
+    }
 
     // GESTIÓN DE CONCEPTOS DE PAGO
     public function obtenerTodosConceptos() {
@@ -211,12 +396,18 @@ class PagoService{
             return ['success' => false, 'errors' => $errores];
         }
         
+        // CRÍTICO: Verificar correctamente el checkbox
+        $esRecurrente = isset($datos['es_recurrente']) && $datos['es_recurrente'] == '1' ? 1 : 0;
+        
         $datosInsert = [
             'nombre' => $datos['nombre'],
             'descripcion' => $datos['descripcion'] ?? null,
             'monto' => $datos['monto'],
             'tipo' => $datos['tipo'] ?? 'otro',
-            'requiere' => isset($datos['requiere_comprobante']) ? 1 : 0,
+            'requiere' => isset($datos['requiere_comprobante']) && $datos['requiere_comprobante'] == '1' ? 1 : 0,
+            'es_recurrente' => $esRecurrente,
+            'frecuencia' => $esRecurrente ? ($datos['frecuencia'] ?? null) : null,
+            'dia_vencimiento' => $esRecurrente ? ($datos['dia_vencimiento'] ?? null) : null,
             'estado' => 'activo'
         ];
         
@@ -251,12 +442,18 @@ class PagoService{
             return ['success' => false, 'errors' => $errores];
         }
         
+        // CRÍTICO: Verificar correctamente el checkbox
+        $esRecurrente = isset($datos['es_recurrente']) && $datos['es_recurrente'] == '1' ? 1 : 0;
+        
         $datosUpdate = [
             'nombre' => $datos['nombre'],
             'descripcion' => $datos['descripcion'] ?? null,
             'monto' => $datos['monto'],
             'tipo' => $datos['tipo'] ?? 'otro',
-            'requiere' => isset($datos['requiere_comprobante']) ? 1 : 0,
+            'requiere' => isset($datos['requiere_comprobante']) && $datos['requiere_comprobante'] == '1' ? 1 : 0,
+            'es_recurrente' => $esRecurrente,
+            'frecuencia' => $esRecurrente ? ($datos['frecuencia'] ?? null) : null,
+            'dia_vencimiento' => $esRecurrente ? ($datos['dia_vencimiento'] ?? null) : null,
             'estado' => $datos['estado'] ?? 'activo'
         ];
         
@@ -302,8 +499,13 @@ class PagoService{
         }
         
         $datosInsert = [
+            'codigo' => $datos['codigo'] ?? strtoupper(substr($datos['nombre'], 0, 3)),
             'nombre' => $datos['nombre'],
             'descripcion' => $datos['descripcion'] ?? null,
+            'requiere_comprobante' => isset($datos['requiere_comprobante']) && $datos['requiere_comprobante'] == '1' ? 1 : 0,
+            'datos_adicionales' => !empty($datos['datos_adicionales']) ? 
+                $datos['datos_adicionales'] : null,
+            'orden' => $datos['orden'] ?? 0,
             'activo' => 'activo'
         ];
         
@@ -329,8 +531,13 @@ class PagoService{
         }
         
         $datosUpdate = [
+            'codigo' => $datos['codigo'] ?? $metodo['codigo'],
             'nombre' => $datos['nombre'],
             'descripcion' => $datos['descripcion'] ?? null,
+            'requiere_comprobante' => isset($datos['requiere_comprobante']) && $datos['requiere_comprobante'] == '1' ? 1 : 0,
+            'datos_adicionales' => !empty($datos['datos_adicionales']) ? 
+                $datos['datos_adicionales'] : $metodo['datos_adicionales'],
+            'orden' => $datos['orden'] ?? $metodo['orden'],
             'activo' => $datos['activo'] ?? 'activo'
         ];
         

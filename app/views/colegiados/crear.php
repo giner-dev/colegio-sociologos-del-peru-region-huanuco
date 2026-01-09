@@ -11,8 +11,13 @@
             <div class="row">
                 <!-- Número de Colegiatura -->
                 <div class="col-md-4 mb-3">
-                    <label class="form-label required">Número de Colegiatura</label>
-                    <input type="text" name="numero_colegiatura" class="form-control" required>
+                    <label class="form-label">Número de Colegiatura</label>
+                    <input type="text" name="numero_colegiatura" class="form-control" 
+                           placeholder="Dejar vacío para auto-generar">
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i> 
+                        Si se deja vacío, se generará automáticamente
+                    </small>
                 </div>
                 
                 <!-- DNI -->

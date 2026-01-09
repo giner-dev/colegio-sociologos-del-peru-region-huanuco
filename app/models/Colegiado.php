@@ -12,7 +12,6 @@ class Colegiado{
     public $direccion;
     public $fecha_nacimiento;
     public $estado;
-    public $estado_manual;
     public $foto;
     public $observaciones;
     public $fecha_registro;
@@ -48,7 +47,6 @@ class Colegiado{
             'direccion' => $this->direccion,
             'fecha_nacimiento' => $this->fecha_nacimiento,
             'estado' => $this->estado,
-            'estado_manual' => $this->estado_manual,
             'foto' => $this->foto,
             'observaciones' => $this->observaciones
         ];

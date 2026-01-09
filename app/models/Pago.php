@@ -1,31 +1,38 @@
 <?php
 class Pago {
-    public $idPagos;
-    public $colegiados_id;
-    public $concepto_id;
-    public $concepto_texto;
+    public $idPago;
+    public $colegiado_id;
+    public $deuda_id;
     public $monto;
     public $fecha_pago;
-    public $estado;
+    public $fecha_registro_pago;
     public $metodo_pago_id;
     public $numero_comprobante;
+    public $archivo_comprobante;
+    public $estado;
     public $observaciones;
     public $usuario_registro_id;
-    public $archivo_comprobante;
+    public $fecha_confirmacion;
+    public $usuario_confirmacion_id;
     public $fecha_registro;
     public $fecha_actualizacion;
     
-    // Propiedades del colegiado
+    // Propiedades del colegiado (para joins)
     public $nombres;
     public $apellido_paterno;
     public $apellido_materno;
     public $numero_colegiatura;
     public $dni;
     
+    // Propiedades de la deuda (para joins)
+    public $deuda_descripcion;
+    public $deuda_concepto;
+    public $deuda_monto_esperado;
+    
     // Propiedades relacionadas
-    public $concepto_nombre;
     public $metodo_nombre;
-    public $usuario_nombre;
+    public $usuario_registro_nombre;
+    public $usuario_confirmacion_nombre;
     
     public function __construct($data = []) {
         if (!empty($data)) {
@@ -39,22 +46,32 @@ class Pago {
                 $this->$key = $value;
             }
         }
+        
+        // Mantener compatibilidad con nombres antiguos
+        if (isset($data['idPagos']) && !isset($data['idPago'])) {
+            $this->idPago = $data['idPagos'];
+        }
+        if (isset($data['colegiados_id']) && !isset($data['colegiado_id'])) {
+            $this->colegiado_id = $data['colegiados_id'];
+        }
+        if (isset($data['concepto_nombre']) && !isset($data['deuda_concepto'])) {
+            $this->deuda_concepto = $data['concepto_nombre'];
+        }
     }
     
     public function toArray() {
         return [
-            'idPagos' => $this->idPagos,
-            'colegiados_id' => $this->colegiados_id,
-            'concepto_id' => $this->concepto_id,
-            'concepto_texto' => $this->concepto_texto,
+            'idPago' => $this->idPago,
+            'colegiado_id' => $this->colegiado_id,
+            'deuda_id' => $this->deuda_id,
             'monto' => $this->monto,
             'fecha_pago' => $this->fecha_pago,
-            'estado' => $this->estado,
             'metodo_pago_id' => $this->metodo_pago_id,
             'numero_comprobante' => $this->numero_comprobante,
+            'archivo_comprobante' => $this->archivo_comprobante,
+            'estado' => $this->estado,
             'observaciones' => $this->observaciones,
-            'usuario_registro_id' => $this->usuario_registro_id,
-            'archivo_comprobante' => $this->archivo_comprobante
+            'usuario_registro_id' => $this->usuario_registro_id
         ];
     }
     
@@ -68,11 +85,36 @@ class Pago {
         return $this->estado === 'registrado';
     }
     
-    public function isValidado() {
-        return $this->estado === 'validado';
+    public function isConfirmado() {
+        return $this->estado === 'confirmado';
     }
     
     public function isAnulado() {
         return $this->estado === 'anulado';
+    }
+    
+    public function getEstadoTexto() {
+        $estados = [
+            'registrado' => 'Registrado',
+            'confirmado' => 'Confirmado',
+            'anulado' => 'Anulado'
+        ];
+        
+        return $estados[$this->estado] ?? 'Desconocido';
+    }
+    
+    public function getEstadoClase() {
+        $clases = [
+            'registrado' => 'primary',
+            'confirmado' => 'success',
+            'anulado' => 'danger'
+        ];
+        
+        return $clases[$this->estado] ?? 'secondary';
+    }
+    
+    // Obtiene el concepto del pago (desde la deuda)
+    public function getConcepto() {
+        return $this->deuda_concepto ?? $this->deuda_descripcion ?? 'Pago';
     }
 }

@@ -12,7 +12,7 @@
                 <div class="col-md-4 mb-3">
                     <label class="form-label required">Número de Colegiatura</label>
                     <input type="text" name="numero_colegiatura" class="form-control" 
-                           value="<?php echo e($colegiado->numero_colegiatura); ?>" required>
+                           value="<?php echo formatNumeroColegiatura($colegiado->numero_colegiatura); ?>" required>
                 </div>
                 
                 <div class="col-md-4 mb-3">

@@ -47,6 +47,11 @@ function validateForm(form) {
     const inputs = form.querySelectorAll('input[required], select[required], textarea[required]');
     
     inputs.forEach(input => {
+        // Saltar validación para numero_colegiatura ya que ahora es opcional
+        if (input.name === 'numero_colegiatura') {
+            return;
+        }
+        
         if (!validateInput(input)) {
             isValid = false;
         }
@@ -432,7 +437,37 @@ function animateElements() {
 setTimeout(animateElements, 100);
 
 // ===================================
+// FORMATEO DE NÚMERO DE COLEGIATURA
+// ===================================
+function formatNumeroColegiatura(numero, digitos = 5) {
+    if (!numero) {
+        return '0'.repeat(digitos);
+    }
+    return numero.toString().padStart(digitos, '0');
+}
+
+// Aplica formato a todos los números de colegiatura en la página
+function formatAllNumeroColegiatura() {
+    // Buscar todos los elementos que muestren número de colegiatura
+    const elementos = document.querySelectorAll('[data-numero-colegiatura]');
+    
+    elementos.forEach(elemento => {
+        const numero = elemento.getAttribute('data-numero-colegiatura');
+        if (numero) {
+            elemento.textContent = formatNumeroColegiatura(numero);
+        }
+    });
+}
+
+// Ejecutar al cargar la página
+document.addEventListener('DOMContentLoaded', function() {
+    formatAllNumeroColegiatura();
+});
+
+
+// ===================================
 // EXPORTAR FUNCIONES GLOBALES
 // ===================================
 window.showLoadingModal = showLoadingModal;
 window.hideLoadingModal = hideLoadingModal;
+window.formatNumeroColegiatura = formatNumeroColegiatura;

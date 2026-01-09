@@ -2,8 +2,9 @@
 require_once __DIR__ . '/../../core/Controller.php';
 require_once __DIR__ . '/../services/PagoService.php';
 require_once __DIR__ . '/../repositories/ColegiadoRepository.php';
+require_once __DIR__ . '/../repositories/DeudaRepository.php';
 
-class PagoController extends Controller{
+class PagoController extends Controller {
     private $pagoService;
     
     public function __construct() {
@@ -11,23 +12,24 @@ class PagoController extends Controller{
         $this->pagoService = new PagoService();
     }
 
-    // lista todos los pagos con paginación
+    // Lista todos los pagos con paginación
     public function index() {
         $this->requireAuth();
         
-        $page = $this->getQuery('page', 1);
+        $page = (int)($this->getQuery('page') ?? 1);
         $perPage = 20;
         
         $filtros = [
             'numero_colegiatura' => $this->getQuery('numero_colegiatura'),
+            'dni' => $this->getQuery('dni'),
             'fecha_inicio' => $this->getQuery('fecha_inicio'),
             'fecha_fin' => $this->getQuery('fecha_fin'),
             'metodo_pago' => $this->getQuery('metodo_pago'),
-            'estado' => $this->getQuery('estado')
+            'estado' => $this->getQuery('estado'),
+            'concepto_id' => $this->getQuery('concepto_id')
         ];
         
         $resultado = $this->pagoService->obtenerPagos($page, $perPage, $filtros);
-        $opciones = $this->pagoService->obtenerOpcionesPago();
         
         $this->render('pagos/index', [
             'pagos' => $resultado['pagos'],
@@ -38,41 +40,92 @@ class PagoController extends Controller{
                 'totalPages' => $resultado['totalPages']
             ],
             'filtros' => $filtros,
-            'metodos' => $opciones['metodos'],
+            'metodos' => $resultado['metodos'],
+            'conceptos' => $resultado['conceptos'],
             'active_menu' => 'pagos',
             'titulo' => 'Gestión de Pagos'
         ]);
     }
 
-    // muestra formulario para registrar pago
+    // Obtiene colegiados CON deudas pendientes
+    private function obtenerColegiadosConDeudas() {
+        $colegiadoRepo = new ColegiadoRepository();
+        $deudaRepo = new DeudaRepository();
+        
+        $todosColegiados = $colegiadoRepo->findAll();
+        
+        $colegiadosConDeudas = [];
+        foreach ($todosColegiados as $colegiado) {
+            if ($deudaRepo->tieneDeudasPendientes($colegiado->idColegiados)) {
+                $colegiadosConDeudas[] = $colegiado;
+            }
+        }
+        
+        return $colegiadosConDeudas;
+    }
+
+    // Muestra formulario para registrar pago
     public function registrar() {
         $this->requireAuth();
         $this->requireRole(['administrador', 'tesorero']);
         
         $opciones = $this->pagoService->obtenerOpcionesPago();
         
-        $colegiadoRepo = new ColegiadoRepository();
-        $colegiados = $colegiadoRepo->findAll();
+        // Obtener colegiados con deudas pendientes
+        $deudaRepo = new DeudaRepository();
+        $colegiadosRepo = new ColegiadoRepository();
         
+        // Obtener IDs de colegiados con deudas
+        $sql = "SELECT DISTINCT colegiado_id 
+                FROM deudas 
+                WHERE estado IN ('pendiente', 'vencido', 'parcial')
+                AND saldo_pendiente > 0";
+
+        $db = Database::getInstance();
+        $results = $db->query($sql);
+        
+        $colegiados = [];
+        foreach ($results as $row) {
+            $colegiado = $colegiadosRepo->findById($row['colegiado_id']);
+            if ($colegiado) {
+                $colegiados[] = $colegiado;
+            }
+        }
+
+        // Resto del código permanece igual...
+        $deudaId = $this->getQuery('deuda_id');
+        $colegiadoId = $this->getQuery('colegiado_id');
+
+        $deudasPendientes = [];
+        $colegiadoSeleccionado = null;
+
+        if ($colegiadoId) {
+            $deudasPendientes = $this->pagoService->obtenerDeudasPendientes($colegiadoId);
+            $colegiadoRepo = new ColegiadoRepository();
+            $colegiadoSeleccionado = $colegiadoRepo->findById($colegiadoId);
+        }
+
         $this->render('pagos/registrar', [
             'metodos' => $opciones['metodos'],
-            'conceptos' => $opciones['conceptos'],
             'colegiados' => $colegiados,
+            'deudasPendientes' => $deudasPendientes,
+            'colegiadoSeleccionado' => $colegiadoSeleccionado,
+            'deudaId' => $deudaId,
+            'colegiadoId' => $colegiadoId,
             'active_menu' => 'pagos',
             'titulo' => 'Registrar Pago'
         ]);
     }
 
-    // guarda un nuevo pago
+    // Guarda un nuevo pago
     public function guardar() {
         $this->requireAuth();
         $this->requireRole(['administrador', 'tesorero']);
         $this->validateMethod('POST');
         
         $datos = [
-            'colegiados_id' => $this->getPost('colegiados_id'),
-            'concepto_id' => $this->getPost('concepto_id'),
-            'concepto_texto' => $this->getPost('concepto_texto'),
+            'colegiado_id' => $this->getPost('colegiado_id'),
+            'deuda_id' => $this->getPost('deuda_id'),
             'monto' => $this->getPost('monto'),
             'fecha_pago' => $this->getPost('fecha_pago'),
             'metodo_pago_id' => $this->getPost('metodo_pago_id'),
@@ -80,18 +133,30 @@ class PagoController extends Controller{
             'observaciones' => $this->getPost('observaciones')
         ];
         
+        // Procesar archivo si se subió
+        if (!empty($_FILES['archivo_comprobante']['name'])) {
+            $resultadoArchivo = $this->pagoService->subirComprobante($_FILES['archivo_comprobante']);
+            if ($resultadoArchivo['success']) {
+                $datos['archivo_comprobante'] = $resultadoArchivo['ruta'];
+            } else {
+                $this->setError($resultadoArchivo['message']);
+                $this->redirect(url('pagos/registrar'));
+                return;
+            }
+        }
+        
         $resultado = $this->pagoService->registrarPago($datos, authUserId());
         
         if ($resultado['success']) {
             $this->setSuccess('Pago registrado correctamente');
             $this->redirect(url('pagos/ver/' . $resultado['id']));
         } else {
-            $this->setError(implode(', ', $resultado['errors']));
+            $this->setError('Error: ' . implode(', ', $resultado['errors']));
             $this->redirect(url('pagos/registrar'));
         }
     }
 
-    // muestra detalles de un pago
+    // Muestra detalles de un pago
     public function ver($id) {
         $this->requireAuth();
         
@@ -110,7 +175,24 @@ class PagoController extends Controller{
         ]);
     }
 
-    // anula un pago
+    // Confirma un pago
+    public function confirmar($id) {
+        $this->requireAuth();
+        $this->requireRole(['administrador', 'tesorero']);
+        $this->validateMethod('POST');
+        
+        $resultado = $this->pagoService->confirmarPago($id, authUserId());
+        
+        if ($resultado['success']) {
+            $this->setSuccess($resultado['message']);
+        } else {
+            $this->setError($resultado['message']);
+        }
+        
+        $this->redirect(url('pagos/ver/' . $id));
+    }
+
+    // Anula un pago
     public function anular($id) {
         $this->requireAuth();
         $this->requireRole(['administrador']);
@@ -127,20 +209,20 @@ class PagoController extends Controller{
         $this->redirect(url('pagos/ver/' . $id));
     }
     
-    // historial de pagos de un colegiado
+    // Historial de pagos de un colegiado
     public function historialColegiado($idColegiado) {
         $this->requireAuth();
         
         $colegiadoRepo = new ColegiadoRepository();
-        
         $colegiado = $colegiadoRepo->findById($idColegiado);
+        
         if (!$colegiado) {
             $this->setError('Colegiado no encontrado');
             $this->redirect(url('colegiados'));
             return;
         }
         
-        $pagos = $colegiadoRepo->getHistorialPagos($idColegiado);
+        $pagos = $this->pagoService->obtenerHistorialColegiado($idColegiado);
         
         $this->render('pagos/historial', [
             'colegiado' => $colegiado,
@@ -150,7 +232,101 @@ class PagoController extends Controller{
         ]);
     }
 
+    // API: Obtiene deudas pendientes de un colegiado
+    public function apiDeudasPendientes($colegiadoId) {
+        $this->requireAuth();
+        $this->requireRole(['administrador', 'tesorero']);
+        
+        try {
+            // Log para debugging
+            error_log("=== API Deudas Pendientes ===");
+            error_log("Colegiado ID: " . $colegiadoId);
+            
+            // Obtener deudas usando el servicio
+            $deudasData = $this->pagoService->obtenerDeudasPendientes($colegiadoId);
+            
+            error_log("Deudas encontradas: " . count($deudasData));
+            error_log("Tipo de dato: " . gettype($deudasData));
+            
+            // Normalizar datos - el servicio ya devuelve arrays
+            $deudasArray = [];
+            
+            if (is_array($deudasData) && !empty($deudasData)) {
+                foreach ($deudasData as $deuda) {
+                    // El servicio ya convierte todo a arrays
+                    if (is_array($deuda)) {
+                        $deudasArray[] = [
+                            'idDeuda' => $deuda['idDeuda'] ?? null,
+                            'concepto_id' => $deuda['concepto_id'] ?? null,
+                            'concepto_nombre' => $deuda['concepto_nombre'] ?? 'Sin concepto',
+                            'descripcion_deuda' => $deuda['descripcion_deuda'] ?? '',
+                            'monto_esperado' => floatval($deuda['monto_esperado'] ?? 0),
+                            'monto_pagado' => floatval($deuda['monto_pagado'] ?? 0),
+                            'saldo_pendiente' => floatval($deuda['saldo_pendiente'] ?? 0),
+                            'fecha_generacion' => $deuda['fecha_generacion'] ?? null,
+                            'fecha_vencimiento' => $deuda['fecha_vencimiento'] ?? null,
+                            'fecha_maxima_pago' => $deuda['fecha_maxima_pago'] ?? null,
+                            'estado' => $deuda['estado'] ?? 'pendiente',
+                            'origen' => $deuda['origen'] ?? 'manual'
+                        ];
+                    } 
+                    // Por si acaso llegara a ser un objeto (no debería)
+                    elseif (is_object($deuda)) {
+                        error_log("Deuda es objeto, convirtiendo...");
+                        
+                        $deudasArray[] = [
+                            'idDeuda' => $deuda->idDeuda ?? null,
+                            'concepto_id' => $deuda->concepto_id ?? null,
+                            'concepto_nombre' => $deuda->concepto_nombre ?? 'Sin concepto',
+                            'descripcion_deuda' => $deuda->descripcion_deuda ?? '',
+                            'monto_esperado' => floatval($deuda->monto_esperado ?? 0),
+                            'monto_pagado' => floatval($deuda->monto_pagado ?? 0),
+                            'saldo_pendiente' => floatval($deuda->saldo_pendiente ?? 0),
+                            'fecha_generacion' => $deuda->fecha_generacion ?? null,
+                            'fecha_vencimiento' => $deuda->fecha_vencimiento ?? null,
+                            'fecha_maxima_pago' => $deuda->fecha_maxima_pago ?? null,
+                            'estado' => $deuda->estado ?? 'pendiente',
+                            'origen' => $deuda->origen ?? 'manual'
+                        ];
+                    }
+                }
+            }
+            
+            error_log("Deudas procesadas: " . count($deudasArray));
+            error_log("JSON a enviar: " . json_encode($deudasArray));
+            
+            // Respuesta
+            $this->json([
+                'success' => true,
+                'deudas' => $deudasArray,
+                'total' => count($deudasArray),
+                'colegiado_id' => $colegiadoId
+            ]);
+            
+        } catch (Exception $e) {
+            error_log("❌ ERROR en apiDeudasPendientes: " . $e->getMessage());
+            error_log("Stack trace: " . $e->getTraceAsString());
+            
+            $this->json([
+                'success' => false,
+                'message' => 'Error al cargar deudas: ' . $e->getMessage(),
+                'deudas' => [],
+                'error_detail' => $e->getMessage()
+            ]);
+        }
+    }
 
+    // API: Obtener métodos de pago
+    public function apiMetodos() {
+        $this->requireAuth();
+
+        $metodos = $this->pagoService->obtenerTodosMetodos();
+
+        $this->json([
+            'success' => true,
+            'metodos' => $metodos
+        ]);
+    }
 
     // GESTIÓN DE CONCEPTOS DE PAGO (Solo Admin)
     public function conceptos() {
@@ -186,7 +362,10 @@ class PagoController extends Controller{
             'descripcion' => $this->getPost('descripcion'),
             'monto' => $this->getPost('monto'),
             'tipo' => $this->getPost('tipo'),
-            'requiere_comprobante' => $this->getPost('requiere_comprobante')
+            'requiere_comprobante' => $this->getPost('requiere_comprobante'),
+            'es_recurrente' => $this->getPost('es_recurrente'),
+            'frecuencia' => $this->getPost('frecuencia'),
+            'dia_vencimiento' => $this->getPost('dia_vencimiento')
         ];
         
         $resultado = $this->pagoService->crearConcepto($datos);
@@ -230,6 +409,9 @@ class PagoController extends Controller{
             'monto' => $this->getPost('monto'),
             'tipo' => $this->getPost('tipo'),
             'requiere_comprobante' => $this->getPost('requiere_comprobante'),
+            'es_recurrente' => $this->getPost('es_recurrente'),
+            'frecuencia' => $this->getPost('frecuencia'),
+            'dia_vencimiento' => $this->getPost('dia_vencimiento'),
             'estado' => $this->getPost('estado')
         ];
         
@@ -291,7 +473,11 @@ class PagoController extends Controller{
         
         $datos = [
             'nombre' => $this->getPost('nombre'),
-            'descripcion' => $this->getPost('descripcion')
+            'descripcion' => $this->getPost('descripcion'),
+            'codigo' => $this->getPost('codigo'),
+            'requiere_comprobante' => $this->getPost('requiere_comprobante'),
+            'datos_adicionales' => $this->getPost('datos_adicionales'),
+            'orden' => $this->getPost('orden')
         ];
         
         $resultado = $this->pagoService->crearMetodo($datos);
@@ -332,6 +518,10 @@ class PagoController extends Controller{
         $datos = [
             'nombre' => $this->getPost('nombre'),
             'descripcion' => $this->getPost('descripcion'),
+            'codigo' => $this->getPost('codigo'),
+            'requiere_comprobante' => $this->getPost('requiere_comprobante'),
+            'datos_adicionales' => $this->getPost('datos_adicionales'),
+            'orden' => $this->getPost('orden'),
             'activo' => $this->getPost('activo')
         ];
         

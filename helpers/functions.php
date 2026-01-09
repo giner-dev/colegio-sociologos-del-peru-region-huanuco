@@ -183,7 +183,11 @@ function formatDateTime($datetime) {
 
 // Formatea un monto en soles peruanos
 function formatMoney($amount, $showSymbol = true) {
-    $formatted = number_format($amount, 2, '.', ',');
+    if ($amount === null) {
+        $amount = 0;
+    }
+    
+    $formatted = number_format((float)$amount, 2, '.', ',');
     return $showSymbol ? 'S/ ' . $formatted : $formatted;
 }
 
@@ -317,4 +321,12 @@ function forceLogout() {
     if (session_status() === PHP_SESSION_NONE) {
         session_start();
     }
+}
+
+// formatea el número de colegiatura con ceros a la izquierda
+function formatNumeroColegiatura($numero, $digitos = 5) {
+    if (empty($numero)) {
+        return str_repeat('0', $digitos);
+    }
+    return str_pad($numero, $digitos, '0', STR_PAD_LEFT);
 }

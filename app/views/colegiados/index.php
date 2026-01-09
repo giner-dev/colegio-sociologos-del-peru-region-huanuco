@@ -102,7 +102,7 @@
                         <?php foreach ($colegiados as $colegiado): ?>
                             <tr>
                                 <td data-label="N° Colegiatura">
-                                    <strong><?php echo e($colegiado->numero_colegiatura); ?></strong>
+                                    <strong><?php echo formatNumeroColegiatura($colegiado->numero_colegiatura); ?></strong>
                                 </td>
                                 <td data-label="DNI"><?php echo e($colegiado->dni); ?></td>
                                 <td data-label="Apellidos y Nombres"><?php echo e($colegiado->getNombreCompleto()); ?></td>

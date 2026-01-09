@@ -29,6 +29,11 @@ class ColegiadoService{
     }
 
     public function crear($datos) {
+        // Si no viene número de colegiatura, generar uno automáticamente
+        if (empty($datos['numero_colegiatura'])) {
+            $datos['numero_colegiatura'] = $this->colegiadoRepository->generarNumeroColegiatura();
+        }
+
         // validar datos
         $errores = $this->validarDatos($datos);
         if (!empty($errores)) {
@@ -58,7 +63,6 @@ class ColegiadoService{
             'direccion' => $datos['direccion'] ?? null,
             'fecha_nacimiento' => $datos['fecha_nacimiento'] ?? null,
             'estado' => 'inhabilitado',
-            'estado_manual' => 0,
             'observaciones' => $datos['observaciones'] ?? null
         ];
         
@@ -134,7 +138,7 @@ class ColegiadoService{
         }
         
         // Cambiar estado
-        $this->colegiadoRepository->cambiarEstado($id, $nuevoEstado, true);
+        $this->colegiadoRepository->cambiarEstado($id, $nuevoEstado, $motivo);
         
         // Registrar en historial
         $this->registrarCambioEstado($id, $colegiado->estado, $nuevoEstado, $motivo, 'manual', $usuarioId);
@@ -183,9 +187,9 @@ class ColegiadoService{
         $datos['apellido_paterno'] = $datos['apellido_paterno'] ?? '';
         $datos['nombres'] = $datos['nombres'] ?? '';
         
-        if (empty($datos['numero_colegiatura'])) {
-            $errores[] = 'El número de colegiatura es obligatorio';
-        }
+        //if (empty($datos['numero_colegiatura'])) {
+        //    $errores[] = 'El número de colegiatura es obligatorio';
+        //}
         
         if (empty($datos['dni'])) {
             $errores[] = 'El DNI es obligatorio';
