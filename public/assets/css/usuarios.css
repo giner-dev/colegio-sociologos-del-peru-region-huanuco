@@ -1,0 +1,75 @@
+.badge-activo {
+    background: var(--success-color);
+    color: white;
+}
+
+.badge-inactivo {
+    background: var(--secondary-color);
+    color: white;
+}
+
+.perfil-avatar {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    color: white;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    font-weight: bold;
+    margin: 20px auto;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.info-item:last-child {
+    border-bottom: none;
+}
+
+.info-item i {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+    width: 30px;
+    text-align: center;
+}
+
+.info-item div {
+    flex: 1;
+}
+
+.info-item small {
+    display: block;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    margin-bottom: 3px;
+}
+
+.info-item strong {
+    display: block;
+    color: var(--text-color);
+}
+
+@media (max-width: 768px) {
+    .perfil-avatar {
+        width: 100px;
+        height: 100px;
+        font-size: 2.5rem;
+    }
+    
+    .info-item {
+        padding: 10px 0;
+    }
+    
+    .info-item i {
+        font-size: 1.2rem;
+    }
+}

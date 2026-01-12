@@ -136,6 +136,11 @@ $router->get('/usuarios/editar/{id}', 'UsuarioController@editar');
 $router->post('/usuarios/actualizar/{id}', 'UsuarioController@actualizar');
 $router->post('/usuarios/cambiar-estado/{id}', 'UsuarioController@cambiarEstado');
 
+// Perfil de usuario
+$router->get('/usuarios/perfil', 'UsuarioController@perfil');
+$router->post('/usuarios/actualizar-perfil', 'UsuarioController@actualizarPerfil');
+$router->post('/usuarios/cambiar-password', 'UsuarioController@cambiarPassword');
+
 // ============================================
 // PÁGINAS DE ERROR
 // ============================================

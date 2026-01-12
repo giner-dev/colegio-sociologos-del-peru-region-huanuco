@@ -69,6 +69,7 @@ include __DIR__ . '/header.php';
 <script src="<?php echo url('assets/js/pagos.js'); ?>"></script>
 <script src="<?php echo url('assets/js/egresos.js'); ?>"></script>
 <script src="<?php echo url('assets/js/reportes.js'); ?>"></script>
+<script src="<?php echo url('assets/js/usuarios.js'); ?>"></script>
 
 </body>
 </html>

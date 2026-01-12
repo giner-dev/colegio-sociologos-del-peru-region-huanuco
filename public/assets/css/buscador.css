@@ -1,0 +1,608 @@
+/* ============================================
+   VARIABLES Y RESET
+   ============================================ */
+:root {
+    --primary: #B91D22;
+    --primary-dark: #8a1519;
+    --primary-light: #d42429;
+    --success: #28a745;
+    --danger: #dc3545;
+    --white: #ffffff;
+    --gray-100: #f8f9fa;
+    --gray-200: #e9ecef;
+    --gray-300: #dee2e6;
+    --gray-600: #6c757d;
+    --gray-900: #212529;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+    --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+    --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.16);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(185, 29, 34, 0.95) 0%, rgba(124, 0, 0, 0.95) 50%),
+                url('../../uploads/fondos/fondo_login.webp') center/cover no-repeat fixed;
+    padding: 20px;
+    position: relative;
+    overflow-x: hidden;
+}
+
+/* ============================================
+   FONDO ANIMADO CON PATRÓN
+   ============================================ */
+.background-animated {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    background: 
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 10px,
+            rgba(255, 255, 255, 0.03) 10px,
+            rgba(255, 255, 255, 0.03) 20px
+        );
+    pointer-events: none;
+}
+
+@keyframes floatBackground {
+    0%, 100% { transform: translateY(0) scale(1); }
+    50% { transform: translateY(-30px) scale(1.05); }
+}
+
+/* ============================================
+   CONTAINER PRINCIPAL
+   ============================================ */
+.buscador-container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 600px;
+    animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.buscador-header {
+    text-align: center;
+    color: white;
+    margin-bottom: 30px;
+}
+
+.logo-container {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(10px);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 20px;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.logo-container img {
+    width: 80px;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.buscador-header h1 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+
+.buscador-header h2 {
+    font-size: 1.3rem;
+    font-weight: 500;
+    margin-bottom: 5px;
+    opacity: 0.95;
+}
+
+.subtitle {
+    font-size: 1rem;
+    opacity: 0.85;
+    font-weight: 300;
+}
+
+/* ============================================
+   SEARCH CARD
+   ============================================ */
+.search-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    transition: var(--transition);
+    animation: scaleIn 0.5s ease-out 0.2s both;
+}
+
+@keyframes scaleIn {
+    from {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.search-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.search-card-header {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.search-card-header i {
+    font-size: 2rem;
+}
+
+.search-card-header h3 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.search-card-body {
+    padding: 35px;
+}
+
+/* ============================================
+   FORMULARIO
+   ============================================ */
+.form-group {
+    margin-bottom: 25px;
+}
+
+.form-group label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 12px;
+    font-size: 1rem;
+}
+
+.form-group label i {
+    color: var(--primary);
+}
+
+.form-control {
+    width: 100%;
+    padding: 15px 20px;
+    border: 2px solid var(--gray-300);
+    border-radius: 12px;
+    font-size: 1.1rem;
+    transition: var(--transition);
+    outline: none;
+}
+
+.form-control:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 4px rgba(185, 29, 34, 0.1);
+    transform: translateY(-2px);
+}
+
+.form-control.error {
+    border-color: var(--danger);
+    animation: shake 0.4s ease;
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-10px); }
+    75% { transform: translateX(10px); }
+}
+
+.form-text {
+    display: block;
+    margin-top: 8px;
+    font-size: 0.875rem;
+    color: var(--gray-600);
+}
+
+/* ============================================
+   BOTÓN BUSCAR
+   ============================================ */
+.btn-search {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: var(--transition);
+    box-shadow: 0 4px 15px rgba(185, 29, 34, 0.3);
+}
+
+.btn-search:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(185, 29, 34, 0.4);
+}
+
+.btn-search:active {
+    transform: translateY(-1px);
+}
+
+.btn-search:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.btn-search.loading {
+    pointer-events: none;
+}
+
+.btn-search.loading i {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+/* ============================================
+   RESULT CARD
+   ============================================ */
+.result-card {
+    background: white;
+    border-radius: 20px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    margin-top: 25px;
+    animation: slideDown 0.5s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.result-header {
+    background: linear-gradient(135deg, var(--success) 0%, #218838 100%);
+    color: white;
+    padding: 20px 25px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.result-header.not-found {
+    background: linear-gradient(135deg, var(--danger) 0%, #c82333 100%);
+}
+
+.result-header i {
+    font-size: 1.8rem;
+}
+
+.result-header h3 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.result-body {
+    padding: 30px;
+}
+
+/* ============================================
+   RESULTADO ENCONTRADO
+   ============================================ */
+.result-item {
+    padding: 15px;
+    background: var(--gray-100);
+    border-radius: 10px;
+    margin-bottom: 15px;
+    transition: var(--transition);
+}
+
+.result-item:hover {
+    background: var(--gray-200);
+    transform: translateX(5px);
+}
+
+.result-label {
+    font-size: 0.875rem;
+    color: var(--gray-600);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.result-label i {
+    color: var(--primary);
+}
+
+.result-value {
+    font-size: 1.2rem;
+    color: var(--gray-900);
+    font-weight: 500;
+}
+
+/* Estado Badge */
+.estado-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.estado-badge.habilitado {
+    background: var(--success);
+    color: white;
+    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+}
+
+.estado-badge.inhabilitado {
+    background: var(--danger);
+    color: white;
+    box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+}
+
+/* ============================================
+   NO ENCONTRADO
+   ============================================ */
+.not-found-content {
+    text-align: center;
+    padding: 20px;
+}
+
+.not-found-icon {
+    font-size: 4rem;
+    color: var(--gray-300);
+    margin-bottom: 20px;
+}
+
+.not-found-content h4 {
+    font-size: 1.3rem;
+    color: var(--gray-900);
+    margin-bottom: 10px;
+}
+
+.not-found-content p {
+    color: var(--gray-600);
+    font-size: 1rem;
+    line-height: 1.6;
+}
+
+/* ============================================
+   BOTÓN NUEVA BÚSQUEDA
+   ============================================ */
+.btn-new-search {
+    width: 100%;
+    padding: 12px;
+    background: var(--gray-200);
+    color: var(--gray-900);
+    border: none;
+    border-radius: 0 0 20px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    transition: var(--transition);
+}
+
+.btn-new-search:hover {
+    background: var(--primary);
+    color: white;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+.buscador-footer {
+    text-align: center;
+    color: white;
+    margin-top: 30px;
+    padding: 20px;
+    font-size: 0.9rem;
+    animation: fadeIn 0.8s ease-out 0.4s both;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.buscador-footer p {
+    margin: 5px 0;
+}
+
+.buscador-footer a {
+    color: white;
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.buscador-footer a:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+/* ============================================
+   BOTÓN FLOTANTE
+   ============================================ */
+.btn-floating {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    width: 60px;
+    height: 60px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    box-shadow: 0 4px 20px rgba(185, 29, 34, 0.4);
+    transition: var(--transition);
+    z-index: 1000;
+}
+
+.btn-floating:hover {
+    transform: translateY(-5px) scale(1.1);
+    box-shadow: 0 8px 30px rgba(185, 29, 34, 0.5);
+}
+
+/* ============================================
+   RESPONSIVE
+   ============================================ */
+@media (max-width: 768px) {
+    body {
+        padding: 15px;
+    }
+    
+    .buscador-header h1 {
+        font-size: 1.5rem;
+    }
+    
+    .buscador-header h2 {
+        font-size: 1.1rem;
+    }
+    
+    .logo-container {
+        width: 70px;
+        height: 70px;
+    }
+    
+    .logo-container i {
+        font-size: 2rem;
+    }
+    
+    .search-card-header,
+    .result-header {
+        padding: 20px;
+    }
+    
+    .search-card-header h3 {
+        font-size: 1.2rem;
+    }
+    
+    .search-card-body {
+        padding: 25px;
+    }
+    
+    .form-control {
+        padding: 12px 15px;
+        font-size: 1rem;
+    }
+    
+    .btn-search {
+        padding: 12px;
+        font-size: 1rem;
+    }
+    
+    .result-body {
+        padding: 20px;
+    }
+    
+    .result-value {
+        font-size: 1.1rem;
+    }
+    
+    .estado-badge {
+        font-size: 1rem;
+        padding: 8px 15px;
+    }
+    
+    .btn-floating {
+        width: 50px;
+        height: 50px;
+        bottom: 20px;
+        right: 20px;
+        font-size: 1.2rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .buscador-header h1 {
+        font-size: 1.3rem;
+    }
+    
+    .buscador-header h2 {
+        font-size: 1rem;
+    }
+    
+    .subtitle {
+        font-size: 0.9rem;
+    }
+    
+    .search-card-body {
+        padding: 20px;
+    }
+    
+    .result-item {
+        padding: 12px;
+    }
+}

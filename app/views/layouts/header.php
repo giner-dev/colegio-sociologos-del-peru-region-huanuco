@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="<?php echo url('assets/css/pagos.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/deudas.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/reportes.css'); ?>">
+    <link rel="stylesheet" href="<?php echo url('assets/css/usuarios.css'); ?>">
     
 </head>
 <body>
@@ -60,7 +61,7 @@
                         <i class="fas fa-user-circle"></i>
                     </button>
                     <div class="dropdown-menu">
-                        <a href="#" class="dropdown-item">
+                        <a href="<?php echo url('usuarios/perfil'); ?>" class="dropdown-item">
                             <i class="fas fa-user"></i> Mi Perfil
                         </a>
                         <a href="#" class="dropdown-item">
