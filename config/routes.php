@@ -106,6 +106,14 @@ $router->get('/egresos/ver/{id}', 'EgresoController@ver');
 $router->get('/egresos/editar/{id}', 'EgresoController@editar');
 $router->post('/egresos/actualizar/{id}', 'EgresoController@actualizar');
 
+// Gestión de Tipos de Gasto (Solo Admin)
+$router->get('/egresos/tipos-gasto', 'EgresoController@tiposGasto');
+$router->get('/egresos/tipos-gasto/crear', 'EgresoController@crearTipoGasto');
+$router->post('/egresos/tipos-gasto/guardar', 'EgresoController@guardarTipoGasto');
+$router->get('/egresos/tipos-gasto/editar/{id}', 'EgresoController@editarTipoGasto');
+$router->post('/egresos/tipos-gasto/actualizar/{id}', 'EgresoController@actualizarTipoGasto');
+$router->post('/egresos/tipos-gasto/eliminar/{id}', 'EgresoController@eliminarTipoGasto');
+
 // ============================================
 // MÓDULO: REPORTES
 // ============================================

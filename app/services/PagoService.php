@@ -308,35 +308,7 @@ class PagoService {
 
     // Procesa archivo de comprobante
     public function subirComprobante($archivo) {
-        if ($archivo['error'] !== UPLOAD_ERR_OK) {
-            return ['success' => false, 'message' => 'Error al subir el archivo'];
-        }
-        
-        $extensionesPermitidas = ['jpg', 'jpeg', 'png', 'pdf', 'doc', 'docx'];
-        $extension = strtolower(pathinfo($archivo['name'], PATHINFO_EXTENSION));
-        
-        if (!in_array($extension, $extensionesPermitidas)) {
-            return ['success' => false, 'message' => 'Solo se permiten archivos JPG, PNG, PDF o DOC'];
-        }
-        
-        $maxSize = 5 * 1024 * 1024;
-        if ($archivo['size'] > $maxSize) {
-            return ['success' => false, 'message' => 'El archivo no debe exceder los 5MB'];
-        }
-        
-        $nombreArchivo = 'comprobante_' . date('Ymd_His') . '_' . uniqid() . '.' . $extension;
-        $rutaDestino = basePath('public/uploads/comprobantes/' . $nombreArchivo);
-        
-        $directorio = dirname($rutaDestino);
-        if (!is_dir($directorio)) {
-            mkdir($directorio, 0777, true);
-        }
-        
-        if (move_uploaded_file($archivo['tmp_name'], $rutaDestino)) {
-            return ['success' => true, 'ruta' => 'uploads/comprobantes/' . $nombreArchivo];
-        }
-        
-        return ['success' => false, 'message' => 'Error al guardar el archivo'];
+        return FileUploadManager::uploadComprobante($archivo, 'pago');
     }
 
     // Obtiene deudas pendientes de un colegiado

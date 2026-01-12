@@ -64,7 +64,7 @@
             </div>
             
             <div class="row">
-                <div class="col-md-4 mb-3">
+                <div class="col-md-3 mb-3">
                     <label class="form-label required">Monto</label>
                     <div class="input-group">
                         <span class="input-group-text">S/</span>

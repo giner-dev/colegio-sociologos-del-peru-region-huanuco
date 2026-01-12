@@ -16,6 +16,7 @@
     <link rel="stylesheet" href="<?php echo url('assets/css/colegiados.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/pagos.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/deudas.css'); ?>">
+    <link rel="stylesheet" href="<?php echo url('assets/css/reportes.css'); ?>">
     
 </head>
 <body>

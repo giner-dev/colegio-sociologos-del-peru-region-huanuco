@@ -13,6 +13,7 @@ ini_set('display_errors', 1);
 
 // Cargar funciones auxiliares
 require_once ROOT_PATH . '/helpers/functions.php';
+require_once ROOT_PATH . '/helpers/upload.php';
 
 // cargar autoload de Composer
 if (file_exists(ROOT_PATH . '/vendor/autoload.php')) {

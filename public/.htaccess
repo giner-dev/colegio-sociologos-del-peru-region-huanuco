@@ -64,10 +64,12 @@ php_value error_reporting E_ALL
 </IfModule>
 
 # ============================================
-# PROTECCIÓN CONTRA HOTLINKING
+# PROTECCIÓN CONTRA HOTLINKING (COMENTADO EN DESARROLLO)
 # ============================================
-<IfModule mod_rewrite.c>
-    RewriteCond %{HTTP_REFERER} !^$
-    RewriteCond %{HTTP_REFERER} !^http(s)?://(www\.)?tudominio\.com [NC]
-    RewriteRule \.(jpg|jpeg|png|gif)$ - [NC,F,L]
-</IfModule>
+# Descomentar en producción y cambiar tudominio.com por tu dominio real
+# <IfModule mod_rewrite.c>
+#     RewriteCond %{HTTP_REFERER} !^$
+#     RewriteCond %{HTTP_REFERER} !^https?://(www\.)?csphuanuco\.org\.pe [NC]
+#     RewriteCond %{HTTP_REFERER} !^http(s)?://localhost [NC]
+#     RewriteRule \.(jpg|jpeg|png|gif)$ - [NC,F,L]
+# </IfModule>

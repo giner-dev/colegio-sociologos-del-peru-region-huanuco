@@ -35,23 +35,24 @@ class DashboardController extends Controller {
             "SELECT COUNT(*) as total FROM colegiados WHERE estado = 'inhabilitado'"
         );
         
-        // Total de deudas pendientes - CORREGIDO para nueva estructura
+        // ✅ Total de colegiados con deudas pendientes
         $deudasPendientes = $db->queryOne(
-            "SELECT COUNT(*) as total, COALESCE(SUM(saldo_pendiente), 0) as monto_total 
+            "SELECT COUNT(DISTINCT colegiado_id) as total, 
+                    COALESCE(SUM(saldo_pendiente), 0) as monto_total 
              FROM deudas 
              WHERE estado IN ('pendiente', 'parcial', 'vencido')"
         );
         
-        // Ingresos del mes actual - CORREGIDO nombre de tabla
+        // ✅ Ingresos del mes actual
         $ingresosMes = $db->queryOne(
             "SELECT COALESCE(SUM(monto), 0) as total 
              FROM pagos 
              WHERE MONTH(fecha_pago) = MONTH(CURRENT_DATE()) 
              AND YEAR(fecha_pago) = YEAR(CURRENT_DATE())
-             AND estado != 'anulado'"
+             AND estado IN ('registrado', 'confirmado')"
         );
         
-        // Egresos del mes actual
+        // ✅ Egresos del mes actual (ESTA CONSULTA ESTÁ CORRECTA)
         $egresosMes = $db->queryOne(
             "SELECT COALESCE(SUM(monto), 0) as total 
              FROM egresos 
@@ -59,12 +60,12 @@ class DashboardController extends Controller {
              AND YEAR(fecha_egreso) = YEAR(CURRENT_DATE())"
         );
         
-        // Últimos pagos registrados - CORREGIDO nombre de columna y tabla
+        // ✅ Últimos pagos registrados
         $ultimosPagos = $db->query(
             "SELECT p.*, c.nombres, c.apellido_paterno, c.apellido_materno, c.numero_colegiatura
              FROM pagos p
              INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
-             WHERE p.estado != 'anulado'
+             WHERE p.estado IN ('registrado', 'confirmado')
              ORDER BY p.fecha_registro DESC
              LIMIT 5"
         );

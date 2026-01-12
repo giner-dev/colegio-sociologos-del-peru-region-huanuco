@@ -41,6 +41,14 @@
     
     --info-light: #d1ecf1;
     --info-dark: #138496;
+
+    /* VARIABLES PARA REPORTES */
+    --chart-green: #28a745;
+    --chart-red: #dc3545;
+    --chart-blue: #17a2b8;
+    --chart-yellow: #ffc107;
+    --chart-purple: #6f42c1;
+    --chart-orange: #fd7e14;
 }
 
 /* ===================================

@@ -240,16 +240,24 @@ class PagoRepository {
 
     // Anula un pago
     public function anular($id, $usuarioId = null) {
+        $archivoPath = $this->getArchivoComprobante($id);
+        
         $sql = "UPDATE pagos 
                 SET estado = 'anulado',
                     usuario_confirmacion_id = COALESCE(:usuario_confirmacion_id, usuario_confirmacion_id)
                 WHERE idPago = :id
                 AND estado IN ('registrado', 'confirmado')";
         
-        return $this->db->execute($sql, [
+        $resultado = $this->db->execute($sql, [
             'id' => $id,
             'usuario_confirmacion_id' => $usuarioId
         ]);
+        
+        if ($resultado && $archivoPath) {
+            FileUploadManager::deleteComprobante($archivoPath);
+        }
+        
+        return $resultado;
     }
 
     // Obtiene resumen de ingresos por periodo
@@ -501,5 +509,32 @@ class PagoRepository {
                 ORDER BY d.fecha_vencimiento ASC";
         
         return $this->db->query($sql, ['colegiado_id' => $colegiadoId]);
+    }
+
+    // obtiene la ruta del comprobante de un pago
+    public function getArchivoComprobante($id) {
+        $sql = "SELECT archivo_comprobante FROM pagos WHERE idPago = :id";
+        $result = $this->db->queryOne($sql, ['id' => $id]);
+        return $result['archivo_comprobante'] ?? null;
+    }
+
+    // Elimina un pago y su archivo asociado
+    public function deleteConArchivo($id) {
+        try {
+            $archivoPath = $this->getArchivoComprobante($id);
+
+            $sql = "DELETE FROM pagos WHERE idPago = :id";
+            $resultado = $this->db->execute($sql, ['id' => $id]);
+
+            if ($resultado && $archivoPath) {
+                FileUploadManager::deleteComprobante($archivoPath);
+            }
+
+            return $resultado;
+
+        } catch (Exception $e) {
+            logMessage("Error al eliminar pago con archivo: " . $e->getMessage(), 'error');
+            throw $e;
+        }
     }
 }

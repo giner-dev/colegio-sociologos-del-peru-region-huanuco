@@ -1,0 +1,56 @@
+# ============================================
+# ACCESO A COMPROBANTES
+# ============================================
+
+# Permitir acceso a todos los tipos de archivo permitidos
+<FilesMatch "\.(jpg|jpeg|png|gif|pdf|doc|docx)$">
+    Require all granted
+</FilesMatch>
+
+# Bloquear ejecución de PHP por seguridad
+<FilesMatch "\.(php|php3|php4|php5|phtml)$">
+    Require all denied
+</FilesMatch>
+
+# ============================================
+# MIME TYPES CORRECTOS
+# ============================================
+<IfModule mod_mime.c>
+    # Imágenes
+    AddType image/jpeg .jpg .jpeg
+    AddType image/png .png
+    AddType image/gif .gif
+    
+    # Documentos
+    AddType application/pdf .pdf
+    AddType application/msword .doc
+    AddType application/vnd.openxmlformats-officedocument.wordprocessingml.document .docx
+</IfModule>
+
+# ============================================
+# HEADERS DE SEGURIDAD
+# ============================================
+<IfModule mod_headers.c>
+    # Permitir que las imágenes se carguen desde el mismo dominio
+    Header set Access-Control-Allow-Origin "*"
+    
+    # Prevenir que los archivos sean ejecutados
+    Header set X-Content-Type-Options "nosniff"
+    
+    # Cache para mejorar rendimiento
+    <FilesMatch "\.(jpg|jpeg|png|gif|pdf)$">
+        Header set Cache-Control "max-age=2592000, public"
+    </FilesMatch>
+</IfModule>
+
+# ============================================
+# DESHABILITAR LISTADO DE DIRECTORIOS
+# ============================================
+Options -Indexes
+
+# ============================================
+# PERMITIR ACCESO DESDE LOCALHOST
+# ============================================
+<IfModule mod_rewrite.c>
+    RewriteEngine Off
+</IfModule>
