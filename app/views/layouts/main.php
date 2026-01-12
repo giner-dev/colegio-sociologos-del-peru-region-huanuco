@@ -57,23 +57,18 @@ include __DIR__ . '/header.php';
     </div>
 </div>
 
-<!-- 1. main.js primero (configuración global y utilidades) -->
+<script>
+    window.PHP_BASE_URL = '<?php echo url(); ?>';
+</script>
+
 <script src="<?php echo url('assets/js/main.js'); ?>"></script>
 
-<!-- 2. Módulos específicos después (dependen de main.js) -->
 <script src="<?php echo url('assets/js/dashboard.js'); ?>"></script>
 <script src="<?php echo url('assets/js/colegiados.js'); ?>"></script>
 <script src="<?php echo url('assets/js/deudas.js'); ?>"></script>
 <script src="<?php echo url('assets/js/pagos.js'); ?>"></script>
 <script src="<?php echo url('assets/js/egresos.js'); ?>"></script>
 <script src="<?php echo url('assets/js/reportes.js'); ?>"></script>
-
-<!-- Inyectar BASE_URL desde PHP a JavaScript -->
-<script>
-    // Configurar BASE_URL desde PHP
-    window.PHP_BASE_URL = '<?php echo url(); ?>';
-    console.log('📍 BASE_URL inyectado desde PHP:', window.PHP_BASE_URL);
-</script>
 
 </body>
 </html>

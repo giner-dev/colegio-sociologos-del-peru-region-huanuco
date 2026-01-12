@@ -128,7 +128,10 @@ window.PagosModule = (function() {
             
             fetch(url)
                 .then(response => {
-                    console.log(`📥 Respuesta recibida para colegiado ${colegiadoId}:`, response.status);
+                    const contentType = response.headers.get("content-type");
+                    if (!response.ok || !contentType || !contentType.includes("application/json")) {
+                        throw new Error("Respuesta no válida");
+                    }
                     return response.json();
                 })
                 .then(data => {
@@ -310,8 +313,9 @@ window.PagosModule = (function() {
         const url = getAppUrl(`pagos/api-deudas-pendientes/${colegiadoId}`);
         
         console.log(`🔄 Cargando deudas para colegiado ${colegiadoId}...`);
-        console.log(`📡 URL completa: ${url}`);
+        console.log(`📡 URL solicitada: ${url}`);
         
+        // Mostrar spinner de carga
         tbody.innerHTML = `
             <tr>
                 <td colspan="8" class="text-center py-4">
@@ -323,40 +327,52 @@ window.PagosModule = (function() {
         
         fetch(url)
             .then(response => {
-                console.log('📥 Respuesta recibida:', response.status, response.statusText);
+                console.log('📥 Respuesta recibida del servidor:', response.status, response.statusText);
                 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                // --- ESCUDO DE SEGURIDAD PARA JSON ---
+                const contentType = response.headers.get("content-type");
+                
+                // Si la respuesta no es OK o no es JSON (es un HTML de error 404/500)
+                if (!response.ok || !contentType || !contentType.includes("application/json")) {
+                    console.error('❌ Error: El servidor no devolvió JSON. Tipo recibido:', contentType);
+                    throw new Error(`Error del servidor (${response.status}). Es posible que la ruta sea incorrecta.`);
                 }
                 
                 return response.json();
             })
             .then(data => {
-                console.log('✅ Datos de deudas:', data);
+                console.log('✅ Datos procesados correctamente:', data);
                 
                 if (data.success && data.deudas && data.deudas.length > 0) {
                     deudasData = data.deudas;
-                    mostrarDeudas(deudasData);
+                    mostrarDeudas(deudasData); // Esta función ya la tienes en tu archivo
+                    
                     document.getElementById('mensaje-sin-deudas').style.display = 'none';
                     document.getElementById('tabla-deudas-container').style.display = 'block';
                 } else {
-                    console.warn('⚠️ No hay deudas pendientes');
+                    console.warn('⚠️ El servidor respondió éxito pero sin deudas');
                     document.getElementById('mensaje-sin-deudas').style.display = 'block';
                     document.getElementById('tabla-deudas-container').style.display = 'none';
                     tbody.innerHTML = '';
                 }
             })
             .catch(error => {
-                console.error('❌ Error al cargar deudas:', error);
-                showToast('Error al cargar las deudas: ' + error.message, 'error');
+                console.error('❌ Error crítico en fetch:', error);
+                
+                // Mostrar error visual en la tabla para el usuario
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="8" class="text-center text-danger py-4">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            Error al cargar las deudas: ${error.message}
+                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                            <p class="mb-0"><strong>Error al cargar deudas:</strong> ${error.message}</p>
+                            <small>Verifica la consola (F12) para más detalles.</small>
                         </td>
                     </tr>
                 `;
+                
+                if (typeof showToast === 'function') {
+                    showToast('No se pudieron cargar las deudas', 'error');
+                }
             });
     }
     

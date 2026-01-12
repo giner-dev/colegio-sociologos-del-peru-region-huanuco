@@ -5,57 +5,27 @@
 // Configurar BASE_URL una sola vez al inicio
 window.APP_CONFIG = {
     baseUrl: (() => {
-        // Método 1: Desde etiqueta <base>
-        const baseTag = document.querySelector('base');
-        if (baseTag) {
-            return baseTag.href.replace(/\/$/, '');
-        }
-        
-        // Método 2: Desde variable PHP inyectada
+        // Usar la variable inyectada desde layouts/main.php
         if (typeof window.PHP_BASE_URL !== 'undefined') {
             return window.PHP_BASE_URL.replace(/\/$/, '');
         }
         
-        // Método 3: Construir desde window.location (más robusto)
-        const origin = window.location.origin;
-        const pathname = window.location.pathname;
-        
-        // Detectar si hay /public/ en la ruta
-        if (pathname.includes('/public/')) {
-            const publicIndex = pathname.indexOf('/public/');
-            return origin + pathname.substring(0, publicIndex + 7); // Incluye /public
-        }
-        
-        // Detectar estructura tipo /SIAD_CSH/algo
-        const segments = pathname.split('/').filter(s => s);
-        
-        if (segments.length > 0) {
-            // El primer segmento suele ser el nombre del proyecto
-            const projectName = segments[0];
-            
-            // Verificar si el segundo segmento es 'public'
-            if (segments[1] === 'public') {
-                return `${origin}/${projectName}/public`;
-            }
-            
-            // Si no hay 'public' visible, asumir que está en la raíz del proyecto
-            return `${origin}/${projectName}/public`;
-        }
-        
-        // Fallback: solo el origen
-        return origin;
+        // Fallback extremo solo por si acaso
+        return window.location.origin;
     })(),
     
-    sessionCheckInterval: 60000, // 1 minuto
-    sessionWarningTime: 5 // Avisar cuando queden 5 minutos
+    sessionCheckInterval: 60000, 
+    sessionWarningTime: 5
 };
 
 // Función global para obtener URL completa
 window.getAppUrl = function(path = '') {
-    return window.APP_CONFIG.baseUrl + '/' + path.replace(/^\//, '');
+    // Limpiamos el path de barras iniciales y concatenamos
+    const cleanPath = path.toString().replace(/^\//, '');
+    return window.APP_CONFIG.baseUrl + '/' + cleanPath;
 };
 
-console.log('🌐 Base URL configurada:', window.APP_CONFIG.baseUrl);
+console.log('🌐 URL Base del Sistema:', window.APP_CONFIG.baseUrl);
 
 // ========================================
 // INICIALIZACIONES GLOBALES
@@ -281,22 +251,28 @@ function initSessionMonitor() {
 
 function checkSessionTime() {
     fetch(getAppUrl('session/time-left'))
-        .then(response => response.json())
+        .then(response => {
+            // Escudo: Verificar que la respuesta sea JSON
+            const contentType = response.headers.get("content-type");
+            if (!response.ok || !contentType || !contentType.includes("application/json")) {
+                throw new Error("Sesión no disponible");
+            }
+            return response.json();
+        })
         .then(data => {
             const timeLeft = data.timeLeft;
             
-            // Si quedan menos de 5 minutos, mostrar advertencia
             if (timeLeft > 0 && timeLeft <= window.APP_CONFIG.sessionWarningTime) {
                 showSessionWarning(timeLeft);
             }
             
-            // Si la sesión expiró, redirigir
             if (timeLeft <= 0) {
                 window.location.href = getAppUrl('login?expired=1');
             }
         })
         .catch(error => {
-            console.error('Error al verificar sesión:', error);
+            // Silencioso para no molestar al usuario
+            console.warn('Monitor de sesión:', error.message);
         });
 }
 
