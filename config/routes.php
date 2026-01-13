@@ -93,6 +93,7 @@ $router->get('/deudas/colegiado/{id}', 'DeudaController@porColegiado');
 $router->post('/deudas/marcar-pagada/{id}', 'DeudaController@marcarPagada');
 $router->post('/deudas/eliminar/{id}', 'DeudaController@eliminar');
 $router->get('/deudas/morosos', 'DeudaController@morosos');
+$router->get('/deudas/api/colegiados', 'DeudaController@apiColegiadosSearch');
 $router->get('/deudas/api-deudas-pendientes/{id}', 'DeudaController@apiDeudasPendientes');
 $router->post('/deudas/cancelar/{id}', 'DeudaController@cancelar');
 

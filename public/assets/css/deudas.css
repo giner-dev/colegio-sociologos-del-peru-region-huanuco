@@ -65,6 +65,18 @@
     opacity: 0.9;
 }
 
+.col-md-12 .input-group {
+    width: 100%;
+    display: flex;
+    gap: 10px;
+}
+
+.mb-3 .input-group{
+    width: 100%;
+    display: flex;
+    gap: 10px;
+}
+
 /* Botones */
 .btn-primary {
     background-color: #B91D22;
@@ -167,4 +179,276 @@
     .table-responsive {
         font-size: 0.9rem;
     }
+
+    .col-md-12 .input-group {
+        width: 100%;
+        display: block;
+    }
+
+    .col-md-12 .input-group button{
+        margin-top: 10px;
+    }
+}
+
+/* ===================================
+   MODAL DE SELECCIÓN DE COLEGIADO
+   =================================== */
+
+/* Contenedor del modal */
+.custom-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    display: none;
+}
+
+/* Modal visible */
+.custom-modal.show {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Overlay oscuro */
+.custom-modal-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+}
+
+/* Contenedor del modal */
+.custom-modal-dialog {
+    position: relative;
+    z-index: 10001;
+    width: 90%;
+    max-width: 900px;
+    max-height: 90vh;
+}
+
+/* Contenido del modal */
+.custom-modal-content {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    display: flex;
+    flex-direction: column;
+    max-height: 90vh;
+    overflow: hidden;
+}
+
+/* Header del modal */
+.custom-modal-header {
+    background: linear-gradient(135deg, #B91D22, #8a1519);
+    color: white;
+    padding: 20px 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-radius: 12px 12px 0 0;
+}
+
+.custom-modal-title {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.custom-modal-close {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.3s;
+    font-size: 1.2rem;
+}
+
+.custom-modal-close:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Body del modal */
+.custom-modal-body {
+    padding: 25px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Wrapper de la tabla */
+.custom-modal-table-wrapper {
+    max-height: 400px;
+    overflow-y: auto;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+
+/* Scrollbar personalizado */
+.custom-modal-table-wrapper::-webkit-scrollbar {
+    width: 8px;
+}
+
+.custom-modal-table-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.custom-modal-table-wrapper::-webkit-scrollbar-thumb {
+    background: #B91D22;
+    border-radius: 4px;
+}
+
+.custom-modal-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #8a1519;
+}
+
+/* Tabla sticky header */
+.custom-modal-table-wrapper .table thead {
+    position: sticky;
+    top: 0;
+    background: linear-gradient(135deg, #B91D22, #8a1519);
+    z-index: 10;
+}
+
+.custom-modal-table-wrapper .table thead th {
+    color: white;
+    font-weight: 600;
+    padding: 12px 10px;
+    border: none;
+}
+
+.custom-modal-table-wrapper tbody tr {
+    cursor: pointer;
+}
+
+.custom-modal-table-wrapper tbody tr:hover {
+    background-color: #f8f9fa;
+}
+
+.custom-modal-table-wrapper tbody td {
+    padding: 10px;
+    vertical-align: middle;
+}
+
+/* Footer del modal */
+.custom-modal-footer {
+    padding: 15px 25px;
+    background: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    border-radius: 0 0 12px 12px;
+    display: flex;
+    justify-content: flex-end;
+}
+
+/* Spinner personalizado */
+.custom-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+}
+
+.custom-spinner .spinner {
+    border: 4px solid #f3f3f3;
+    border-top: 4px solid #B91D22;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.custom-spinner p {
+    margin-top: 15px;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+/* Paginación personalizada */
+.custom-pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    justify-content: center;
+    gap: 5px;
+}
+
+.custom-pagination a,
+.custom-pagination span {
+    display: inline-block;
+    padding: 8px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    color: #B91D22;
+    text-decoration: none;
+    transition: all 0.3s;
+    cursor: pointer;
+}
+
+.custom-pagination a:hover {
+    background-color: #B91D22;
+    color: white;
+    border-color: #B91D22;
+}
+
+.custom-pagination li.active a,
+.custom-pagination li.active span {
+    background-color: #B91D22;
+    border-color: #B91D22;
+    color: white;
+}
+
+.custom-pagination li.disabled a,
+.custom-pagination li.disabled span {
+    color: #6c757d;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Badge de estado en modal */
+.badge-estado-modal {
+    font-size: 0.75rem;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Botón seleccionar en tabla */
+.btn-seleccionar-col {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+}
+
+/* Input de colegiado seleccionado */
+#colegiadoSeleccionado {
+    background-color: #f8f9fa;
+    font-weight: 500;
+    cursor: default;
+}
+
+#colegiadoSeleccionado.is-valid {
+    border-color: #28a745;
+    background-color: #d4edda;
+}
+
+/* Evitar scroll del body cuando el modal está abierto */
+body.modal-open {
+    overflow: hidden;
 }

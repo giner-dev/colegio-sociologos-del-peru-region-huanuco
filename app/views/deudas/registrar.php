@@ -19,17 +19,15 @@
             <div class="row">
                 <div class="col-md-12 mb-3">
                     <label class="form-label required">Colegiado</label>
-                    <select name="colegiado_id" id="selectColegiado" class="form-select" required>
-                        <option value="">Seleccione un colegiado...</option>
-                        <?php foreach ($colegiados as $colegiado): ?>
-                            <option value="<?php echo $colegiado->idColegiados; ?>">
-                                <?php echo formatNumeroColegiatura($colegiado->numero_colegiatura); ?> - 
-                                <?php echo e($colegiado->getNombreCompleto()); ?> -
-                                DNI: <?php echo e($colegiado->dni); ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <small class="text-muted">Busque por número de colegiatura, nombre o DNI</small>
+                    <div class="input-group">
+                        <input type="hidden" name="colegiado_id" id="colegiadoIdHidden" required>
+                        <input type="text" id="colegiadoSeleccionado" class="form-control" 
+                               placeholder="Ningún colegiado seleccionado" readonly>
+                        <button type="button" class="btn btn-primary" id="btnSeleccionarColegiado">
+                            <i class="fas fa-search me-1"></i> Seleccionar Colegiado
+                        </button>
+                    </div>
+                    <small class="text-muted">Haga clic en el botón para buscar y seleccionar un colegiado</small>
                 </div>
             </div>
             
@@ -114,5 +112,77 @@
                 </div>
             </div>
         </form>
+    </div>
+</div>
+
+
+<!-- Modal de Selección de Colegiado - VERSIÓN PURA SIN BOOTSTRAP -->
+<div class="custom-modal" id="modalSeleccionarColegiado">
+    <div class="custom-modal-overlay"></div>
+    <div class="custom-modal-dialog">
+        <div class="custom-modal-content">
+            <div class="custom-modal-header">
+                <h5 class="custom-modal-title">
+                    <i class="fas fa-users me-2"></i>
+                    Seleccionar Colegiado
+                </h5>
+                <button type="button" class="custom-modal-close" id="btnCerrarModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="custom-modal-body">
+                <!-- Buscador -->
+                <div class="mb-3">
+                    <div class="input-group">
+                        <span class="input-group-text">
+                            <i class="fas fa-search"></i>
+                        </span>
+                        <input type="text" class="form-control" id="buscarColegiadoModal" 
+                               placeholder="Buscar por N° Colegiatura, DNI o Nombre...">
+                        <button class="btn btn-primary" type="button" id="btnBuscarModal">
+                            Buscar
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Tabla de resultados -->
+                <div class="custom-modal-table-wrapper">
+                    <table class="table table-hover table-sm">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>N° Col.</th>
+                                <th>DNI</th>
+                                <th>Nombre Completo</th>
+                                <th>Estado</th>
+                                <th class="text-center">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaColegiadosModal">
+                            <tr>
+                                <td colspan="5" class="text-center">
+                                    <div class="custom-spinner">
+                                        <div class="spinner"></div>
+                                        <p>Cargando...</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación -->
+                <nav aria-label="Paginación modal" class="mt-3">
+                    <ul class="custom-pagination" id="paginacionModal">
+                    </ul>
+                </nav>
+            </div>
+            
+            <div class="custom-modal-footer">
+                <button type="button" class="btn btn-secondary" id="btnCancelarModal">
+                    <i class="fas fa-times me-1"></i> Cancelar
+                </button>
+            </div>
+        </div>
     </div>
 </div>

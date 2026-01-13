@@ -50,6 +50,7 @@ window.DeudasModule = (function() {
         initConceptoAutoFill();
         initConceptoRecurrenteLogic();
         initFormValidation();
+        initModalSeleccionColegiado();
     }
     
     function initSelect2Deudas() {
@@ -599,3 +600,291 @@ window.cancelarDeuda = function(id) {
 window.eliminarDeuda = function(id) {
     DeudasModule.eliminarDeuda(id);
 };
+
+
+// ===================================
+// MODAL DE SELECCIÓN DE COLEGIADO - VANILLA JS
+// ===================================
+function initModalSeleccionColegiado() {
+    const btnSeleccionar = document.getElementById('btnSeleccionarColegiado');
+    const modal = document.getElementById('modalSeleccionarColegiado');
+    const btnCerrar = document.getElementById('btnCerrarModal');
+    const btnCancelar = document.getElementById('btnCancelarModal');
+    const overlay = modal ? modal.querySelector('.custom-modal-overlay') : null;
+    const inputBuscar = document.getElementById('buscarColegiadoModal');
+    const btnBuscar = document.getElementById('btnBuscarModal');
+    
+    if (!btnSeleccionar || !modal) {
+        console.warn('⚠️ Elementos del modal no encontrados');
+        return;
+    }
+    
+    let paginaActual = 1;
+    let busquedaActual = '';
+    
+    // ABRIR MODAL
+    btnSeleccionar.addEventListener('click', function(e) {
+        e.preventDefault();
+        abrirModal();
+        paginaActual = 1;
+        busquedaActual = '';
+        if (inputBuscar) inputBuscar.value = '';
+        cargarColegiadosModal(1, '');
+    });
+    
+    // CERRAR MODAL - Botón X
+    if (btnCerrar) {
+        btnCerrar.addEventListener('click', function(e) {
+            e.preventDefault();
+            cerrarModal();
+        });
+    }
+    
+    // CERRAR MODAL - Botón Cancelar
+    if (btnCancelar) {
+        btnCancelar.addEventListener('click', function(e) {
+            e.preventDefault();
+            cerrarModal();
+        });
+    }
+    
+    // CERRAR MODAL - Click en overlay
+    if (overlay) {
+        overlay.addEventListener('click', function(e) {
+            e.preventDefault();
+            cerrarModal();
+        });
+    }
+    
+    // CERRAR MODAL - Tecla ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && modal.classList.contains('show')) {
+            cerrarModal();
+        }
+    });
+    
+    // Función para abrir modal
+    function abrirModal() {
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+        console.log('✅ Modal abierto');
+    }
+    
+    // Función para cerrar modal
+    function cerrarModal() {
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+        console.log('✅ Modal cerrado');
+    }
+    
+    // BUSCAR - Botón
+    if (btnBuscar) {
+        btnBuscar.addEventListener('click', function() {
+            busquedaActual = inputBuscar?.value || '';
+            paginaActual = 1;
+            cargarColegiadosModal(1, busquedaActual);
+        });
+    }
+    
+    // BUSCAR - Enter
+    if (inputBuscar) {
+        inputBuscar.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                busquedaActual = this.value;
+                paginaActual = 1;
+                cargarColegiadosModal(1, busquedaActual);
+            }
+        });
+    }
+    
+    // CARGAR COLEGIADOS
+    function cargarColegiadosModal(pagina, busqueda) {
+        const tbody = document.getElementById('tablaColegiadosModal');
+        if (!tbody) return;
+        
+        // Loading
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center py-4">
+                    <div class="custom-spinner">
+                        <div class="spinner"></div>
+                        <p>Buscando colegiados...</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        
+        const url = getAppUrl(`deudas/api/colegiados?pagina=${pagina}&busqueda=${encodeURIComponent(busqueda)}`);
+        
+        console.log('🔍 Buscando colegiados en:', url);
+        
+        fetch(url, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            console.log('📥 Respuesta recibida:', response.status);
+            
+            // Verificar si es JSON
+            const contentType = response.headers.get('content-type');
+            if (!contentType || !contentType.includes('application/json')) {
+                return response.text().then(text => {
+                    console.error('❌ No es JSON, recibido:', text.substring(0, 200));
+                    throw new Error('Respuesta no es JSON: ' + text.substring(0, 200));
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('📊 Datos recibidos:', data);
+            if (data.success) {
+                mostrarColegiadosModal(data.colegiados);
+                generarPaginacionModal(data.pagina, data.totalPaginas, busqueda);
+            } else {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="text-center text-danger py-4">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            ${data.message || 'Error al cargar colegiados'}
+                        </td>
+                    </tr>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error en fetch:', error);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-danger py-4">
+                        <i class="fas fa-wifi me-2"></i>
+                        Error de conexión: ${error.message}
+                    </td>
+                </tr>
+            `;
+        });
+    }
+    
+    // MOSTRAR COLEGIADOS
+    function mostrarColegiadosModal(colegiados) {
+        const tbody = document.getElementById('tablaColegiadosModal');
+        if (!tbody) return;
+        
+        if (colegiados.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="text-center text-muted py-4">
+                        <i class="fas fa-search me-2"></i>
+                        No se encontraron colegiados
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = colegiados.map(col => `
+            <tr>
+                <td><strong>${col.numero_colegiatura}</strong></td>
+                <td>${col.dni}</td>
+                <td>${col.nombre_completo}</td>
+                <td>
+                    <span class="badge ${col.estado === 'habilitado' ? 'bg-success' : 'bg-danger'} badge-estado-modal">
+                        ${col.estado === 'habilitado' ? 'Habilitado' : 'Inhabilitado'}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-sm btn-primary btn-seleccionar-col" 
+                            data-id="${col.id}"
+                            data-numero="${col.numero_colegiatura}"
+                            data-dni="${col.dni}"
+                            data-nombre="${col.nombre_completo}">
+                        <i class="fas fa-check me-1"></i> Seleccionar
+                    </button>
+                </td>
+            </tr>
+        `).join('');
+        
+        // Eventos de selección
+        tbody.querySelectorAll('.btn-seleccionar-col').forEach(btn => {
+            btn.addEventListener('click', function() {
+                seleccionarColegiado(
+                    this.dataset.id,
+                    this.dataset.numero,
+                    this.dataset.dni,
+                    this.dataset.nombre
+                );
+            });
+        });
+    }
+    
+    // SELECCIONAR COLEGIADO
+    function seleccionarColegiado(id, numero, dni, nombre) {
+        const inputHidden = document.getElementById('colegiadoIdHidden');
+        const inputVisible = document.getElementById('colegiadoSeleccionado');
+        
+        if (inputHidden) inputHidden.value = id;
+        if (inputVisible) {
+            inputVisible.value = `${numero} - ${nombre} - DNI: ${dni}`;
+            inputVisible.classList.add('is-valid');
+        }
+        
+        cerrarModal();
+        showToast('Colegiado seleccionado correctamente', 'success');
+    }
+    
+    // PAGINACIÓN
+    function generarPaginacionModal(paginaActual, totalPaginas, busqueda) {
+        const paginacion = document.getElementById('paginacionModal');
+        if (!paginacion || totalPaginas <= 1) {
+            if (paginacion) paginacion.innerHTML = '';
+            return;
+        }
+        
+        let html = '';
+        
+        // Anterior
+        html += `
+            <li class="${paginaActual === 1 ? 'disabled' : ''}">
+                <a href="#" data-pagina="${paginaActual - 1}">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+            </li>
+        `;
+        
+        // Páginas
+        for (let i = 1; i <= totalPaginas; i++) {
+            if (i === 1 || i === totalPaginas || (i >= paginaActual - 1 && i <= paginaActual + 1)) {
+                html += `
+                    <li class="${i === paginaActual ? 'active' : ''}">
+                        <a href="#" data-pagina="${i}">${i}</a>
+                    </li>
+                `;
+            } else if (i === paginaActual - 2 || i === paginaActual + 2) {
+                html += `<li class="disabled"><span>...</span></li>`;
+            }
+        }
+        
+        // Siguiente
+        html += `
+            <li class="${paginaActual === totalPaginas ? 'disabled' : ''}">
+                <a href="#" data-pagina="${paginaActual + 1}">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+            </li>
+        `;
+        
+        paginacion.innerHTML = html;
+        
+        // Eventos de paginación
+        paginacion.querySelectorAll('a[data-pagina]').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const pagina = parseInt(this.dataset.pagina);
+                if (pagina && pagina >= 1 && pagina <= totalPaginas) {
+                    cargarColegiadosModal(pagina, busqueda);
+                }
+            });
+        });
+    }
+}

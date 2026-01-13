@@ -189,4 +189,64 @@ class DeudaController extends Controller {
             'total_pendiente' => $resultado['total']
         ]);
     }
+
+
+    // API para buscar colegiados con paginación
+    public function apiColegiadosSearch() {
+        $this->requireAuth();
+        
+        $busqueda = $this->getQuery('busqueda', '');
+        $pagina = (int)($this->getQuery('pagina') ?? 1);
+        $porPagina = 10;
+
+        // USAR EL SERVICE, NO EL REPOSITORY
+        $filtros = [];
+        if (!empty($busqueda)) {
+            // Determinar tipo de búsqueda
+            if (is_numeric($busqueda)) {
+                if (strlen($busqueda) <= 5) {
+                    $filtros['numero_colegiatura'] = $busqueda;
+                } elseif (strlen($busqueda) <= 8) {
+                    $filtros['dni'] = $busqueda;
+                } else {
+                    // Si es numérico pero muy largo, buscar como nombre también
+                    $filtros['nombres'] = $busqueda;
+                }
+            } else {
+                // Búsqueda por texto (nombre)
+                $filtros['nombres'] = $busqueda;
+            }
+        }
+
+        try {
+            // USAR EL SERVICE
+            $resultado = $this->colegiadoService->buscarPaginado($filtros, $pagina, $porPagina);
+
+            // Formatear respuesta
+            $colegiados = array_map(function($col) {
+                return [
+                    'id' => $col->idColegiados,
+                    'numero_colegiatura' => formatNumeroColegiatura($col->numero_colegiatura),
+                    'dni' => $col->dni,
+                    'nombre_completo' => $col->getNombreCompleto(),
+                    'estado' => $col->estado
+                ];
+            }, $resultado['data']);
+
+            $this->json([
+                'success' => true,
+                'colegiados' => $colegiados,
+                'total' => $resultado['total'],
+                'pagina' => $resultado['pagina'],
+                'totalPaginas' => $resultado['totalPaginas']
+            ]);
+        } catch (Exception $e) {
+            error_log('Error en apiColegiadosSearch: ' . $e->getMessage());
+            $this->json([
+                'success' => false,
+                'message' => 'Error en el servidor',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 }

@@ -61,8 +61,11 @@ class ColegiadoRepository{
         }
         
         if (!empty($filtros['nombres'])) {
-            $where .= " AND (nombres LIKE :nombres OR apellido_paterno LIKE :nombres OR apellido_materno LIKE :nombres)";
-            $params['nombres'] = '%' . $filtros['nombres'] . '%';
+            // usar parámetros distintos para cada campo
+            $where .= " AND (nombres LIKE :nombre_busqueda OR apellido_paterno LIKE :apellido1 OR apellido_materno LIKE :apellido2)";
+            $params['nombre_busqueda'] = '%' . $filtros['nombres'] . '%';
+            $params['apellido1'] = '%' . $filtros['nombres'] . '%';
+            $params['apellido2'] = '%' . $filtros['nombres'] . '%';
         }
         
         if (!empty($filtros['estado'])) {
