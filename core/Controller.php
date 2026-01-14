@@ -64,6 +64,18 @@ class Controller{
         requireRole($roles);
     }
 
+    // Verifica que el usuario tenga un permiso específico para un módulo
+    // Ejemplo: $this->requirePermission('pagos', 'crear');
+    protected function requirePermission($modulo, $accion = 'ver') {
+        requirePermission($modulo, $accion);
+    }
+
+    // Verifica si el usuario tiene un permiso (sin redirigir)
+    // Ejemplo: if ($this->hasPermission('pagos', 'editar')) { ... }
+    protected function hasPermission($modulo, $accion = 'ver') {
+        return hasPermission($modulo, $accion);
+    }
+
     // Obtener datos del formulario POST de forma segura
     // Ejemplo: $nombre = $this->getPost('nombre'); || $email = $this->getPost('email', 'default@ejemplo.com');
     protected function getPost($key, $default = null) {

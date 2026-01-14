@@ -15,6 +15,7 @@ class PagoController extends Controller {
     // Lista todos los pagos con paginación
     public function index() {
         $this->requireAuth();
+        $this->requirePermission('pagos', 'ver');
         
         $page = (int)($this->getQuery('page') ?? 1);
         $perPage = 20;
@@ -49,6 +50,7 @@ class PagoController extends Controller {
 
     // Obtiene colegiados CON deudas pendientes
     private function obtenerColegiadosConDeudas() {
+        $this->requirePermission('pagos', 'ver');
         $colegiadoRepo = new ColegiadoRepository();
         $deudaRepo = new DeudaRepository();
         
@@ -67,7 +69,7 @@ class PagoController extends Controller {
     // Muestra formulario para registrar pago
     public function registrar() {
         $this->requireAuth();
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('pagos', 'crear');
         
         $opciones = $this->pagoService->obtenerOpcionesPago();
         
@@ -120,7 +122,7 @@ class PagoController extends Controller {
     // Guarda un nuevo pago
     public function guardar() {
         $this->requireAuth();
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('pagos', 'crear');
         $this->validateMethod('POST');
         
         $datos = [
@@ -178,7 +180,7 @@ class PagoController extends Controller {
     // Confirma un pago
     public function confirmar($id) {
         $this->requireAuth();
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('pagos', 'crear');
         $this->validateMethod('POST');
         
         $resultado = $this->pagoService->confirmarPago($id, authUserId());
@@ -195,7 +197,7 @@ class PagoController extends Controller {
     // Anula un pago
     public function anular($id) {
         $this->requireAuth();
-        $this->requireRole(['administrador']);
+        $this->requirePermission('pagos', 'crear ');
         $this->validateMethod('POST');
         
         $resultado = $this->pagoService->anularPago($id, authUserId());
@@ -235,7 +237,7 @@ class PagoController extends Controller {
     // API: Obtiene deudas pendientes de un colegiado
     public function apiDeudasPendientes($colegiadoId) {
         $this->requireAuth();
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('pagos', 'ver');
         
         try {
             // Log para debugging

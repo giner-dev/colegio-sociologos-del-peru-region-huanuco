@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__ . '/../../core/Controller.php';
 require_once __DIR__ . '/../services/AuthService.php';
+require_once __DIR__ . '/../repositories/RolRepository.php';
 
 // Maneja las peticiones
 class AuthController extends Controller{
@@ -48,6 +49,28 @@ class AuthController extends Controller{
         
         // Login exitoso - Crear sesión
         $this->authService->crearSesion($resultado['usuario']);
+
+        // Cargar permisos del rol
+        $usuario = $resultado['usuario'];
+        $rolRepository = new RolRepository();
+        $rol = $rolRepository->findById($usuario->RolId);
+            
+        if ($rol) {
+        // ASEGURAR que siempre sea array
+        $permisos = $rol->permisos;
+            
+        // Si viene como string JSON, decodificar
+        if (is_string($permisos)) {
+            $permisos = json_decode($permisos, true) ?? [];
+        }
+
+        // Si no es array, inicializar vacío
+        if (!is_array($permisos)) {
+            $permisos = [];
+        }
+
+        $_SESSION['usuario_permisos'] = $permisos;
+    }
 
         // establecer marca de tiempo de última actividad
         $_SESSION['LAST_ACTIVITY'] = time();

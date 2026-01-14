@@ -12,7 +12,7 @@ class ReporteController extends Controller {
     }
 
     public function index() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('reportes', 'ver');
         
         $this->render('reportes/index', [
             'active_menu' => 'reportes',
@@ -22,7 +22,7 @@ class ReporteController extends Controller {
 
     // REPORTE DE INGRESOS
     public function ingresos() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('reportes', 'ver');
         
         $fechaInicio = $this->getQuery('fecha_inicio', date('Y-m-01'));
         $fechaFin = $this->getQuery('fecha_fin', date('Y-m-d'));
@@ -37,7 +37,7 @@ class ReporteController extends Controller {
 
     // REPORTE DE EGRESOS
     public function egresos() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('reportes', 'ver');
         
         $fechaInicio = $this->getQuery('fecha_inicio', date('Y-m-01'));
         $fechaFin = $this->getQuery('fecha_fin', date('Y-m-d'));
@@ -52,7 +52,7 @@ class ReporteController extends Controller {
 
     // REPORTE DE BALANCE
     public function balance() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('reportes', 'ver');
         
         $fechaInicio = $this->getQuery('fecha_inicio', date('Y-m-01'));
         $fechaFin = $this->getQuery('fecha_fin', date('Y-m-d'));
@@ -67,7 +67,7 @@ class ReporteController extends Controller {
 
     // REPORTE DE HABILITADOS
     public function habilitados() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('reportes', 'ver');
         
         $page = (int)($this->getQuery('page') ?? 1);
         $perPage = 50;
@@ -82,7 +82,7 @@ class ReporteController extends Controller {
 
     // REPORTE DE INHABILITADOS
     public function inhabilitados() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('reportes', 'ver');
         
         $page = (int)($this->getQuery('page') ?? 1);
         $perPage = 50;
@@ -97,7 +97,7 @@ class ReporteController extends Controller {
 
     // REPORTE DE MOROSOS
     public function morosos() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('reportes', 'ver');
         
         $page = (int)($this->getQuery('page') ?? 1);
         $perPage = 50;
@@ -112,7 +112,7 @@ class ReporteController extends Controller {
 
     // EXPORTAR A EXCEL
     public function exportarExcel() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('reportes', 'ver');
         
         $tipo = $this->getQuery('tipo');
         $fechaInicio = $this->getQuery('fecha_inicio');

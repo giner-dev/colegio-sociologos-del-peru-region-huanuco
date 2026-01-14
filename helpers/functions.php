@@ -330,3 +330,44 @@ function formatNumeroColegiatura($numero, $digitos = 5) {
     }
     return str_pad($numero, $digitos, '0', STR_PAD_LEFT);
 }
+
+
+// Verifica si el usuario tiene un permiso específico para un módulo
+function hasPermission($modulo, $accion = 'ver') {
+    if (!isAuthenticated()) {
+        return false;
+    }
+    
+    if (hasRole('administrador')) {
+        return true;
+    }
+    
+    if (!isset($_SESSION['usuario_permisos'])) {
+        return false;
+    }
+    
+    $permisos = $_SESSION['usuario_permisos'];
+    
+    if (!isset($permisos[$modulo])) {
+        return false;
+    }
+    
+    if ($permisos[$modulo] === 'all') {
+        return true;
+    }
+    
+    if (is_array($permisos[$modulo])) {
+        return in_array($accion, $permisos[$modulo]);
+    }
+    
+    return false;
+}
+
+// Requiere un permiso específico
+function requirePermission($modulo, $accion = 'ver') {
+    requireAuth();
+    
+    if (!hasPermission($modulo, $accion)) {
+        redirect(url('sin-permisos'));
+    }
+}

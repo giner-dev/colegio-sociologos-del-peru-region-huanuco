@@ -16,7 +16,7 @@ class DeudaController extends Controller {
 
     // Lista todas las deudas
     public function index() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('deudas', 'ver');
         
         $page = (int)($this->getQuery('page') ?? 1);
         $perPage = 25;
@@ -52,7 +52,7 @@ class DeudaController extends Controller {
 
     // Muestra formulario para registrar deuda
     public function registrar() {
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('deudas', 'crear');
         
         $colegiados = $this->colegiadoService->obtenerTodos();
         $conceptos = $this->deudaService->obtenerConceptos();
@@ -67,7 +67,7 @@ class DeudaController extends Controller {
 
     // Guarda una nueva deuda
     public function guardar() {
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('deudas', 'crear');
         $this->validateMethod('POST');
         
         $datos = $this->getAllPost();
@@ -88,7 +88,7 @@ class DeudaController extends Controller {
 
     // Muestra deudas de un colegiado específico
     public function porColegiado($id) {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('deudas', 'ver');
         
         $resultado = $this->deudaService->obtenerPorColegiado($id);
         
@@ -109,7 +109,7 @@ class DeudaController extends Controller {
 
     // Elimina una deuda (vía AJAX)
     public function eliminar($id) {
-        $this->requireRole(['administrador']);
+        $this->requirePermission('deudas', 'eliminar');
         
         $resultado = $this->deudaService->eliminarDeuda($id);
         
@@ -118,7 +118,7 @@ class DeudaController extends Controller {
 
     // Muestra listado de morosos
     public function morosos() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('deudas', 'ver');
         
         $page = (int)($this->getQuery('page') ?? 1);
         $perPage = 25;
@@ -140,7 +140,7 @@ class DeudaController extends Controller {
 
     // Cancela una deuda (vía AJAX)
     public function cancelar($id) {
-        $this->requireRole(['administrador']);
+        $this->requirePermission('deudas', 'crear');
         $this->validateMethod('POST');
         
         $motivo = $this->getPost('motivo', 'Cancelada por el administrador');
@@ -152,7 +152,7 @@ class DeudaController extends Controller {
 
     // obtiene deudas pendientes de un colegiado
     public function apiDeudasPendientes($colegiadoId) {
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('deudas', 'ver');
         
         $resultado = $this->deudaService->obtenerPorColegiado($colegiadoId);
         

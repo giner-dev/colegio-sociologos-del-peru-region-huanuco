@@ -9,13 +9,13 @@
                 <i class="fas fa-arrow-left me-1"></i> Volver
             </a>
             
-            <?php if (hasRole(['administrador', 'tesorero']) && $pago->isRegistrado()): ?>
+            <?php if (hasPermission('pagos','crear') && $pago->isRegistrado()): ?>
                 <button type="button" class="btn btn-success" onclick="confirmarPago(<?php echo $pago->idPago; ?>)">
                     <i class="fas fa-check me-1"></i> Confirmar Pago
                 </button>
             <?php endif; ?>
             
-            <?php if (hasRole('administrador') && !$pago->isAnulado()): ?>
+            <?php if (hasPermission('pagos', 'crear') && !$pago->isAnulado()): ?>
                 <button type="button" class="btn btn-danger" onclick="anularPago(<?php echo $pago->idPago; ?>)">
                     <i class="fas fa-ban me-1"></i> Anular Pago
                 </button>

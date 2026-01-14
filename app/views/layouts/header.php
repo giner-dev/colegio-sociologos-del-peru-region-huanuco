@@ -18,6 +18,7 @@
     <link rel="stylesheet" href="<?php echo url('assets/css/deudas.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/reportes.css'); ?>">
     <link rel="stylesheet" href="<?php echo url('assets/css/usuarios.css'); ?>">
+    <link rel="stylesheet" href="<?php echo url('assets/css/roles.css'); ?>">
     
 </head>
 <body>
@@ -64,9 +65,11 @@
                         <a href="<?php echo url('usuarios/perfil'); ?>" class="dropdown-item">
                             <i class="fas fa-user"></i> Mi Perfil
                         </a>
+                        <?php if (hasRole('administrador')): ?>
                         <a href="#" class="dropdown-item">
                             <i class="fas fa-cog"></i> Configuración
                         </a>
+                        <?php endif; ?>
                         <div class="dropdown-divider"></div>
                         <a href="<?php echo url('logout'); ?>" class="dropdown-item text-danger">
                             <i class="fas fa-sign-out-alt"></i> Cerrar Sesión

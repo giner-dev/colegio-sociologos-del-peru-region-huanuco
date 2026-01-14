@@ -8,7 +8,7 @@
             <a href="<?php echo url('egresos'); ?>" class="btn btn-secondary">
                 <i class="fas fa-arrow-left me-1"></i> Volver
             </a>
-            <?php if (hasRole(['administrador', 'tesorero'])): ?>
+            <?php if (hasPermission('egresos', 'editar')): ?>
                 <a href="<?php echo url('egresos/editar/' . $egreso->idEgreso); ?>" 
                    class="btn btn-warning">
                     <i class="fas fa-edit me-1"></i> Editar

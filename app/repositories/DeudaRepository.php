@@ -86,8 +86,15 @@ class DeudaRepository {
             $params['origen'] = $filtros['origen'];
         }
         
-        $sql .= " ORDER BY d.fecha_vencimiento DESC, d.fecha_registro DESC 
-                  LIMIT :limit OFFSET :offset";
+        $sql .= "  ORDER BY 
+                      CASE 
+                          WHEN d.estado = 'pendiente' THEN 1
+                          WHEN d.estado = 'parcial' THEN 2
+                          WHEN d.estado = 'vencido' THEN 3
+                          ELSE 4
+                      END,
+                      d.fecha_vencimiento ASC
+                    LIMIT :limit OFFSET :offset";
         
         $params['limit'] = $perPage;
         $params['offset'] = $offset;

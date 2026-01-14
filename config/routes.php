@@ -143,6 +143,17 @@ $router->post('/usuarios/actualizar-perfil', 'UsuarioController@actualizarPerfil
 $router->post('/usuarios/cambiar-password', 'UsuarioController@cambiarPassword');
 
 // ============================================
+// MÓDULO: ROLES (Solo Administrador)
+// ============================================
+$router->get('/roles', 'RolController@index');
+$router->get('/roles/crear', 'RolController@crear');
+$router->post('/roles/guardar', 'RolController@guardar');
+$router->get('/roles/editar/{id}', 'RolController@editar');
+$router->post('/roles/actualizar/{id}', 'RolController@actualizar');
+$router->post('/roles/cambiar-estado/{id}', 'RolController@cambiarEstado');
+$router->post('/roles/eliminar/{id}', 'RolController@eliminar');
+
+// ============================================
 // PÁGINAS DE ERROR
 // ============================================
 $router->get('/sin-permisos', 'ErrorController@sinPermisos');

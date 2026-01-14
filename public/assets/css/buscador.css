@@ -477,8 +477,13 @@ body {
     margin: 5px 0;
 }
 
+.buscador-footer .des{
+    color: #ffffffa1;
+    font-size: 12px;
+}
+
 .buscador-footer a {
-    color: white;
+    color: #ffffffa1;
     text-decoration: none;
     font-weight: 600;
     transition: var(--transition);

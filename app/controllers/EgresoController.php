@@ -12,7 +12,7 @@ class EgresoController extends Controller {
     }
 
     public function index() {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('egresos', 'ver');
         
         $page = (int)($this->getQuery('page') ?? 1);
         $perPage = 25;
@@ -41,7 +41,7 @@ class EgresoController extends Controller {
     }
 
     public function registrar() {
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('egresos', 'crear');
         
         $tiposGasto = $this->egresoService->obtenerTiposGasto();
         
@@ -53,7 +53,7 @@ class EgresoController extends Controller {
     }
 
     public function guardar() {
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('egresos', 'crear');
         $this->validateMethod('POST');
         
         $datos = $this->getAllPost();
@@ -81,7 +81,7 @@ class EgresoController extends Controller {
     }
 
     public function ver($id) {
-        $this->requireRole(['administrador', 'tesorero', 'decano']);
+        $this->requirePermission('egresos', 'ver');
         
         $egreso = $this->egresoService->obtenerPorId($id);
         
@@ -99,7 +99,7 @@ class EgresoController extends Controller {
     }
 
     public function editar($id) {
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('egresos', 'editar');
         
         $egreso = $this->egresoService->obtenerPorId($id);
         
@@ -120,7 +120,7 @@ class EgresoController extends Controller {
     }
 
     public function actualizar($id) {
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('egresos', 'editar');
         $this->validateMethod('POST');
         
         $datos = $this->getAllPost();
@@ -142,8 +142,6 @@ class EgresoController extends Controller {
             $this->back();
         }
     }
-
-
 
 
 

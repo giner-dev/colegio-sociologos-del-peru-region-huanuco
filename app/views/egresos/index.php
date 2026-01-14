@@ -10,7 +10,7 @@
                     <i class="fas fa-tags me-1"></i> Tipos de Gasto
                 </a>
             <?php endif; ?>
-            <?php if (hasRole(['administrador', 'tesorero'])): ?>
+            <?php if (hasPermission('egresos', 'crear')): ?>
                 <a href="<?php echo url('egresos/registrar'); ?>" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> Registrar Egreso
                 </a>
@@ -131,7 +131,7 @@
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     
-                                    <?php if (hasRole(['administrador', 'tesorero'])): ?>
+                                    <?php if (hasPermission('egresos', 'editar')): ?>
                                         <a href="<?php echo url('egresos/editar/' . $egreso->idEgreso); ?>" 
                                            class="btn btn-sm btn-warning" title="Editar">
                                             <i class="fas fa-edit"></i>

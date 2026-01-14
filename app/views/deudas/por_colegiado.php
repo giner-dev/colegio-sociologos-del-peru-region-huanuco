@@ -119,7 +119,7 @@
                                 </td>
                                 <td><?php echo formatDate($deuda->fecha_registro); ?></td>
                                 <td class="text-center">
-                                    <?php if (!$deuda->isPagada() && !$deuda->isCancelada() && hasRole(['administrador', 'tesorero'])): ?>
+                                    <?php if (!$deuda->isPagada() && !$deuda->isCancelada() && hasPermission('deudas', 'crear')): ?>
                                         <a href="<?php echo url('pagos/registrar?deuda_id=' . $deuda->idDeuda . '&colegiado_id=' . $colegiado->idColegiados); ?>" 
                                            class="btn btn-sm btn-success" title="Registrar pago">
                                             <i class="fas fa-money-bill-wave"></i>

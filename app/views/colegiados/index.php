@@ -5,7 +5,7 @@
             Gestión de Colegiados
         </h2>
         <div>
-            <?php if (hasRole(['administrador', 'tesorero'])): ?>
+            <?php if (hasPermission('colegiados', 'crear')): ?>
                 <a href="<?php echo url('colegiados/importar'); ?>" class="btn btn-secondary me-2">
                     <i class="fas fa-file-excel"></i> Importar Excel
                 </a>

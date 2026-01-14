@@ -5,7 +5,7 @@
             Gestión de Pagos
         </h2>
         <div>
-            <?php if (hasRole(['administrador', 'tesorero'])): ?>
+            <?php if (hasPermission('pagos', 'crear')): ?>
                 <a href="<?php echo url('pagos/registrar'); ?>" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> Registrar Pago
                 </a>
@@ -164,7 +164,7 @@
                                         <i class="fas fa-eye"></i>
                                     </a>
                                     
-                                    <?php if (hasRole(['administrador', 'tesorero']) && $pago->isRegistrado()): ?>
+                                    <?php if (hasPermission('pagos', 'crear') && $pago->isRegistrado()): ?>
                                         <button type="button" class="btn btn-sm btn-success" 
                                                 onclick="confirmarPago(<?php echo $pago->idPago; ?>)" 
                                                 title="Confirmar pago">
@@ -172,7 +172,7 @@
                                         </button>
                                     <?php endif; ?>
                                     
-                                    <?php if (hasRole('administrador') && !$pago->isAnulado()): ?>
+                                    <?php if (hasPermission('pagos', 'crear') && !$pago->isAnulado()): ?>
                                         <button type="button" class="btn btn-sm btn-danger" 
                                                 onclick="anularPago(<?php echo $pago->idPago; ?>)" 
                                                 title="Anular pago">

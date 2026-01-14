@@ -8,7 +8,7 @@
             <a href="<?php echo url('colegiados'); ?>" class="btn btn-secondary">
                 <i class="fas fa-arrow-left"></i> Volver
             </a>
-            <?php if (hasRole(['administrador', 'tesorero'])): ?>
+            <?php if (hasPermission('colegiados', 'editar')): ?>
                 <a href="<?php echo url('colegiados/editar/' . $colegiado->idColegiados); ?>" class="btn btn-warning">
                     <i class="fas fa-edit"></i> Editar
                 </a>
@@ -120,7 +120,7 @@
 </div>
 
 <!-- Cambiar Estado -->
-<?php if (hasRole('administrador')): ?>
+<?php if (hasPermission('colegiados', 'editar')): ?>
 <div class="card mb-4">
     <div class="card-header bg-search">
         <i class="fas fa-exchange-alt me-2"></i> Cambiar Estado del Colegiado

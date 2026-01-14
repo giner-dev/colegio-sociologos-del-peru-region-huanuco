@@ -14,6 +14,7 @@ class ColegiadoController extends Controller{
     // listar los colegiados
     public function index() {
         $this->requireAuth();
+        $this->requirePermission('colegiados', 'ver');
 
         // Obtener página actual y registros por página
         $pagina = (int)($this->getQuery('pagina') ?? 1);
@@ -50,7 +51,7 @@ class ColegiadoController extends Controller{
     // muestra el formulario para crear un colegiado
     public function crear() {
         $this->requireAuth();
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('colegiados', 'crear');
         
         $this->render('colegiados/crear', [
             'titulo' => 'Nuevo Colegiado',
@@ -61,7 +62,7 @@ class ColegiadoController extends Controller{
     // guarda un nuevo colegiado
     public function guardar() {
         $this->requireAuth();
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('colegiados', 'crear');
         $this->validateMethod('POST');
         
         $datos = [
@@ -92,6 +93,7 @@ class ColegiadoController extends Controller{
     // muestra la información completa de un colegiado
     public function ver($id) {
         $this->requireAuth();
+        $this->requirePermission('colegiados', 'ver');
         
         $info = $this->colegiadoService->obtenerInfoCompleta($id);
         
@@ -114,7 +116,7 @@ class ColegiadoController extends Controller{
     // muestra el formulario para editar un colegiado
     public function editar($id) {
         $this->requireAuth();
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('colegiados', 'editar');
         
         $colegiado = $this->colegiadoService->obtenerPorId($id);
         
@@ -134,7 +136,7 @@ class ColegiadoController extends Controller{
     // actualiza un colegiado
     public function actualizar($id) {
         $this->requireAuth();
-        $this->requireRole(['administrador', 'tesorero']);
+        $this->requirePermission('colegiados', 'editar');
         $this->validateMethod('POST');
         
         $datos = [
@@ -165,7 +167,7 @@ class ColegiadoController extends Controller{
     // cambia el estado de un colegiado
     public function cambiarEstado($id) {
         $this->requireAuth();
-        $this->requireRole(['administrador']);
+        $this->requirePermission('colegiados', 'editar');
         $this->validateMethod('POST');
         
         $nuevoEstado = $this->getPost('estado');
@@ -186,7 +188,7 @@ class ColegiadoController extends Controller{
     // muestra el formulario de importación de Excel
     public function importar() {
         $this->requireAuth();
-        $this->requireRole(['administrador']);
+        $this->requirePermission('colegiados', 'crear');
         
         $this->render('colegiados/importar', [
             'active_menu' => 'colegiados',
@@ -197,7 +199,7 @@ class ColegiadoController extends Controller{
     // procesa el archivo Excel
     public function procesarExcel() {
         $this->requireAuth();
-        $this->requireRole(['administrador']);
+        $this->requirePermission('colegiados', 'crear');
         $this->validateMethod('POST');
         
         // Verificar que se haya subido un archivo
@@ -233,7 +235,7 @@ class ColegiadoController extends Controller{
     // muestra el resultado detallado de la importación
     public function resultadoImportacion() {
         $this->requireAuth();
-        $this->requireRole(['administrador']);
+        $this->requirePermission('colegiados', 'crear');
         
         if (!isset($_SESSION['resultado_importacion'])) {
             $this->redirect(url('colegiados'));
@@ -256,6 +258,4 @@ class ColegiadoController extends Controller{
         $excelService = new ExcelImportService();
         $excelService->generarPlantilla();
     }
-
-    // 
 }

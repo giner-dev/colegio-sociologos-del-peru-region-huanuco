@@ -125,11 +125,13 @@
                     </tbody>
                 </table>
             </div>
+            <?php if (hasPermission('pagos', 'ver')): ?>
             <div class="text-end">
                 <a href="<?php echo url('pagos'); ?>" class="btn btn-outline-primary btn-sm">
                     Ver todos <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
+            <?php endif; ?>
         <?php else: ?>
             <div class="empty-message">
                 <i class="fas fa-info-circle"></i>
@@ -178,11 +180,13 @@
                     </tbody>
                 </table>
             </div>
+            <?php if (hasPermission('colegiados', 'ver')): ?>
             <div class="text-end">
                 <a href="<?php echo url('colegiados'); ?>" class="btn btn-outline-primary btn-sm">
                     Ver todos <i class="fas fa-arrow-right ms-1"></i>
                 </a>
             </div>
+            <?php endif; ?>
         <?php else: ?>
             <div class="empty-message">
                 <i class="fas fa-info-circle"></i>

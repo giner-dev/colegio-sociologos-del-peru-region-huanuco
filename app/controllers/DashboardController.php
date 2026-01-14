@@ -9,6 +9,7 @@ class DashboardController extends Controller {
     // Pagina principal del panel
     public function index() {
         $this->requireAuth();
+        $this->requirePermission('dashboard', 'ver');
         $estadisticas = $this->obtenerEstadisticas();
         
         // Renderizar vista

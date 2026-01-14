@@ -8,7 +8,7 @@
             <a href="<?php echo url('deudas/morosos'); ?>" class="btn btn-warning me-2">
                 <i class="fas fa-exclamation-triangle me-1"></i> Ver Morosos
             </a>
-            <?php if (hasRole(['administrador', 'tesorero'])): ?>
+            <?php if (hasPermission('deudas', 'crear')): ?>
                 <a href="<?php echo url('deudas/registrar'); ?>" class="btn btn-primary">
                     <i class="fas fa-plus me-1"></i> Registrar Deuda
                 </a>
