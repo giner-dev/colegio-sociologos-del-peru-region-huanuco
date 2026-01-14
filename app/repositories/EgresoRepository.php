@@ -163,7 +163,7 @@ class EgresoRepository {
     public function getTiposGasto() {
         $sql = "SELECT * FROM tipo_gasto 
                 WHERE estado = 'activo' 
-                ORDER BY nombre_tipo ASC";
+                ORDER BY idTipo_Gasto ASC";
         return $this->db->query($sql);
     }
 
