@@ -76,16 +76,6 @@
                 Nueva Búsqueda
             </button>
         </div>
-        
-        <!-- Footer -->
-        <footer class="buscador-footer">
-            <p>&copy; <?php echo date('Y'); ?> Todos los derechos reservados CSP-RHCO</p>
-            <p class="des">
-                Desarrollado por 
-                <a href="https://corporacionbalta.com.pe/" target="_blank" rel="noopener">CORPORACIÓN BALTA S.A.C.</a> & 
-                <a href="http://giner.dev/" target="_blank" rel="noopener">Giner Dev</a>
-            </p>
-        </footer>
     </div>
     
     <script>

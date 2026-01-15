@@ -129,7 +129,7 @@
 
 <!-- Tabla -->
 <div class="card">
-    <div class="card-header bg-light">
+    <div class="card-header bg-results">
         <i class="fas fa-list me-2"></i> 
         Resultados: <strong><?php echo number_format($pagination['total']); ?></strong> deuda(s)
     </div>
