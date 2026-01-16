@@ -1002,3 +1002,108 @@ hr {
     border-top: 1px solid var(--border-color);
     margin: 20px 0;
 }
+
+
+/* ===================================
+   PAGINACIÓN
+   =================================== */
+.pagination-wrapper {
+    margin-top: 25px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-color);
+}
+
+.pagination {
+    display: flex;
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.page-item {
+    display: inline-block;
+}
+
+.page-link {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+    padding: 8px 12px;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-color);
+    text-decoration: none;
+    font-weight: 600;
+    transition: var(--transition);
+    background: white;
+}
+
+.page-link:hover {
+    background: var(--bg-light);
+    border-color: var(--primary-color);
+    color: var(--primary-color);
+    transform: translateY(-2px);
+}
+
+.page-item.active .page-link {
+    background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
+    border-color: var(--primary-color);
+    color: white;
+    cursor: default;
+    transform: none;
+}
+
+.page-item.active .page-link:hover {
+    transform: none;
+}
+
+.page-item.disabled .page-link {
+    color: var(--text-muted);
+    cursor: not-allowed;
+    background: var(--bg-light);
+    border-color: var(--border-color);
+    opacity: 0.5;
+}
+
+.page-item.disabled .page-link:hover {
+    transform: none;
+    background: var(--bg-light);
+    border-color: var(--border-color);
+}
+
+.pagination-info {
+    margin-top: 15px;
+}
+
+/* ===================================
+   RESPONSIVE - PAGINACIÓN
+   =================================== */
+@media (max-width: 768px) {
+    .pagination {
+        justify-content: center;
+    }
+    
+    .page-link {
+        min-width: 36px;
+        height: 36px;
+        padding: 6px 10px;
+        font-size: 0.9rem;
+    }
+    
+    .pagination-wrapper {
+        margin-top: 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .page-link {
+        min-width: 32px;
+        height: 32px;
+        padding: 5px 8px;
+        font-size: 0.85rem;
+    }
+}
