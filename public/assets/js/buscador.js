@@ -15,9 +15,6 @@ function getAppUrl(path = '') {
     return window.APP_CONFIG.baseUrl + '/' + cleanPath;
 }
 
-console.log('🔍 Buscador Público iniciado');
-console.log('🌐 URL Base:', window.APP_CONFIG.baseUrl);
-
 // ========================================
 // INICIALIZACIÓN
 // ========================================
@@ -27,19 +24,43 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function initBuscador() {
     const formBuscar = document.getElementById('formBuscar');
+    const tipoBusqueda = document.getElementById('tipoBusqueda');
     const inputDni = document.getElementById('dni');
+    const inputNumero = document.getElementById('numero_colegiatura');
+    const groupDni = document.getElementById('groupDni');
+    const groupNumero = document.getElementById('groupNumero');
+    
+    // Cambiar tipo de búsqueda
+    tipoBusqueda.addEventListener('change', function() {
+        if (this.value === 'dni') {
+            groupDni.style.display = 'block';
+            groupNumero.style.display = 'none';
+            inputDni.value = '';
+            inputDni.classList.remove('error');
+            inputNumero.value = '';
+            inputNumero.classList.remove('error');
+        } else {
+            groupDni.style.display = 'none';
+            groupNumero.style.display = 'block';
+            inputDni.value = '';
+            inputDni.classList.remove('error');
+            inputNumero.value = '';
+            inputNumero.classList.remove('error');
+        }
+    });
     
     // Validación en tiempo real del DNI
     inputDni.addEventListener('input', function() {
-        // Solo permitir números
         this.value = this.value.replace(/[^0-9]/g, '');
-        
-        // Limitar a 8 dígitos
         if (this.value.length > 8) {
             this.value = this.value.slice(0, 8);
         }
-        
-        // Remover clase de error si existe
+        this.classList.remove('error');
+    });
+    
+    // Validación en tiempo real del número de colegiatura
+    inputNumero.addEventListener('input', function() {
+        this.value = this.value.replace(/[^0-9]/g, '');
         this.classList.remove('error');
     });
     
@@ -49,8 +70,15 @@ function initBuscador() {
         buscarColegiado();
     });
     
-    // Enter en el input
+    // Enter en los inputs
     inputDni.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            buscarColegiado();
+        }
+    });
+    
+    inputNumero.addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             e.preventDefault();
             buscarColegiado();
@@ -62,19 +90,41 @@ function initBuscador() {
 // BÚSQUEDA
 // ========================================
 async function buscarColegiado() {
+    const tipoBusqueda = document.getElementById('tipoBusqueda').value;
     const inputDni = document.getElementById('dni');
+    const inputNumero = document.getElementById('numero_colegiatura');
     const btnBuscar = document.getElementById('btnBuscar');
-    const dni = inputDni.value.trim();
     
-    // Validar DNI
-    if (!dni) {
-        mostrarError(inputDni, 'Debe ingresar un número de DNI');
-        return;
-    }
+    let valorBusqueda = '';
+    let parametro = '';
+    let inputActual = null;
     
-    if (dni.length !== 8) {
-        mostrarError(inputDni, 'El DNI debe tener 8 dígitos');
-        return;
+    // Determinar qué se está buscando
+    if (tipoBusqueda === 'dni') {
+        valorBusqueda = inputDni.value.trim();
+        parametro = 'dni';
+        inputActual = inputDni;
+        
+        // Validar DNI
+        if (!valorBusqueda) {
+            mostrarError(inputActual, 'Debe ingresar un número de DNI');
+            return;
+        }
+        
+        if (valorBusqueda.length !== 8) {
+            mostrarError(inputActual, 'El DNI debe tener 8 dígitos');
+            return;
+        }
+    } else {
+        valorBusqueda = inputNumero.value.trim();
+        parametro = 'numero_colegiatura';
+        inputActual = inputNumero;
+        
+        // Validar número de colegiatura
+        if (!valorBusqueda) {
+            mostrarError(inputActual, 'Debe ingresar un número de colegiatura');
+            return;
+        }
     }
     
     // Mostrar loading
@@ -87,7 +137,8 @@ async function buscarColegiado() {
     
     try {
         // Realizar petición
-        const response = await fetch(getAppUrl(`buscador-publico/buscar?dni=${dni}`));
+        const url = getAppUrl(`buscador-publico/buscar?${parametro}=${encodeURIComponent(valorBusqueda)}`);
+        const response = await fetch(url);
         
         if (!response.ok) {
             throw new Error('Error en la respuesta del servidor');
@@ -124,6 +175,12 @@ function mostrarResultadoEncontrado(colegiado) {
     
     // Remover clase not-found si existe
     resultHeader.classList.remove('not-found');
+    
+    // Restaurar header original
+    const headerIcon = resultHeader.querySelector('i');
+    const headerTitle = resultHeader.querySelector('h3');
+    headerIcon.className = 'fas fa-user-check';
+    headerTitle.textContent = 'Resultado de la Búsqueda';
     
     // Determinar icono y clase de estado
     const esHabilitado = colegiado.estado === 'habilitado';
@@ -200,7 +257,7 @@ function mostrarResultadoNoEncontrado(mensaje) {
             <h4>No se encontró el colegiado</h4>
             <p>${escapeHtml(mensaje)}</p>
             <p style="margin-top: 15px; font-size: 0.9rem; color: #6c757d;">
-                Verifique que el DNI sea correcto e intente nuevamente.
+                Verifique que los datos sean correctos e intente nuevamente.
             </p>
         </div>
     `;
@@ -219,7 +276,9 @@ function mostrarResultadoNoEncontrado(mensaje) {
 // ========================================
 function nuevaBusqueda() {
     const resultCard = document.getElementById('resultCard');
+    const tipoBusqueda = document.getElementById('tipoBusqueda');
     const inputDni = document.getElementById('dni');
+    const inputNumero = document.getElementById('numero_colegiatura');
     const resultHeader = resultCard.querySelector('.result-header');
     
     // Ocultar resultado con animación
@@ -237,13 +296,21 @@ function nuevaBusqueda() {
         headerTitle.textContent = 'Resultado de la Búsqueda';
     }, 400);
     
-    // Limpiar y enfocar input
+    // Limpiar inputs
     inputDni.value = '';
     inputDni.classList.remove('error');
-    inputDni.focus();
+    inputNumero.value = '';
+    inputNumero.classList.remove('error');
+    
+    // Enfocar el input correspondiente
+    if (tipoBusqueda.value === 'dni') {
+        inputDni.focus();
+    } else {
+        inputNumero.focus();
+    }
 }
 
-// Agregar animación de slideUp
+// Agregar animación de slideUp si no existe
 if (!document.querySelector('#slide-animations')) {
     const style = document.createElement('style');
     style.id = 'slide-animations';
@@ -266,10 +333,8 @@ if (!document.querySelector('#slide-animations')) {
 // UTILIDADES
 // ========================================
 function mostrarError(input, mensaje) {
-    // Agregar clase de error
     input.classList.add('error');
     
-    // Crear tooltip temporal
     const tooltip = document.createElement('div');
     tooltip.className = 'error-tooltip';
     tooltip.textContent = mensaje;
@@ -288,18 +353,15 @@ function mostrarError(input, mensaje) {
         animation: fadeInDown 0.3s ease;
     `;
     
-    // Agregar tooltip
     const parent = input.parentElement;
     parent.style.position = 'relative';
     parent.appendChild(tooltip);
     
-    // Remover tooltip después de 3 segundos
     setTimeout(() => {
         tooltip.style.animation = 'fadeOutUp 0.3s ease';
         setTimeout(() => tooltip.remove(), 300);
     }, 3000);
     
-    // Agregar animaciones si no existen
     if (!document.querySelector('#tooltip-animations')) {
         const style = document.createElement('style');
         style.id = 'tooltip-animations';
@@ -316,7 +378,6 @@ function mostrarError(input, mensaje) {
         document.head.appendChild(style);
     }
     
-    // Enfocar input
     input.focus();
 }
 
@@ -331,5 +392,3 @@ function escapeHtml(text) {
 // EXPONER FUNCIÓN GLOBAL
 // ========================================
 window.nuevaBusqueda = nuevaBusqueda;
-
-console.log('✅ Buscador listo para usar');

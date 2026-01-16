@@ -10,9 +10,7 @@ class BuscadorPublicoController extends Controller {
         $this->colegiadoRepository = new ColegiadoRepository();
     }
     
-    /**
-     * Muestra la página del buscador público
-     */
+    //Muestra la página del buscador público
     public function index() {
         // Renderizar sin layout (página independiente)
         $this->view->setLayout(null);
@@ -21,49 +19,76 @@ class BuscadorPublicoController extends Controller {
         ]);
     }
     
-    /**
-     * Realiza la búsqueda por DNI (API)
-     */
+    // Realiza la búsqueda por DNI (API)
     public function buscar() {
         // Validar método
         if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
             $this->json(['success' => false, 'message' => 'Método no permitido'], 405);
             return;
         }
-        
-        // Obtener DNI
+
+        // Obtener parámetros de búsqueda
         $dni = $this->getQuery('dni');
-        
-        // Validar DNI
-        if (empty($dni)) {
+        $numeroColegiatura = $this->getQuery('numero_colegiatura');
+
+        // Validar que al menos uno esté presente
+        if (empty($dni) && empty($numeroColegiatura)) {
             $this->json([
                 'success' => false,
-                'message' => 'Debe ingresar un número de DNI'
+                'message' => 'Debe ingresar un DNI o Número de Colegiatura'
             ]);
             return;
         }
-        
-        if (strlen($dni) !== 8 || !ctype_digit($dni)) {
-            $this->json([
-                'success' => false,
-                'message' => 'El DNI debe tener 8 dígitos numéricos'
-            ]);
-            return;
-        }
-        
+
         // Buscar colegiado
         try {
-            $colegiado = $this->colegiadoRepository->findByDni($dni);
-            
+            $colegiado = null;
+
+            // Buscar por DNI si está presente
+            if (!empty($dni)) {
+                // Validar formato DNI
+                if (strlen($dni) !== 8 || !ctype_digit($dni)) {
+                    $this->json([
+                        'success' => false,
+                        'message' => 'El DNI debe tener 8 dígitos numéricos'
+                    ]);
+                    return;
+                }
+
+                $colegiado = $this->colegiadoRepository->findByDni($dni);
+            }
+            // Buscar por número de colegiatura si DNI no está presente
+            else if (!empty($numeroColegiatura)) {
+                // Limpiar ceros a la izquierda y convertir a número puro
+                $numeroLimpio = ltrim($numeroColegiatura, '0');
+
+                // Si quedó vacío después de quitar ceros, es "0"
+                if (empty($numeroLimpio)) {
+                    $numeroLimpio = '0';
+                }
+
+                // Validar que sea numérico
+                if (!ctype_digit($numeroLimpio)) {
+                    $this->json([
+                        'success' => false,
+                        'message' => 'El número de colegiatura debe ser numérico'
+                    ]);
+                    return;
+                }
+
+                $colegiado = $this->colegiadoRepository->findByNumeroColegiatura($numeroLimpio);
+            }
+
             if (!$colegiado) {
+                $tipoBusqueda = !empty($dni) ? 'DNI' : 'número de colegiatura';
                 $this->json([
                     'success' => false,
-                    'message' => 'No se encontró ningún colegiado con ese DNI',
+                    'message' => "No se encontró ningún colegiado con ese {$tipoBusqueda}",
                     'found' => false
                 ]);
                 return;
             }
-            
+
             // Preparar respuesta con datos públicos únicamente
             $response = [
                 'success' => true,
@@ -79,12 +104,12 @@ class BuscadorPublicoController extends Controller {
                     'fecha_colegiatura' => formatDate($colegiado->fecha_colegiatura)
                 ]
             ];
-            
+
             $this->json($response);
-            
+
         } catch (Exception $e) {
             logMessage("Error en búsqueda pública: " . $e->getMessage(), 'error');
-            
+
             $this->json([
                 'success' => false,
                 'message' => 'Ocurrió un error al realizar la búsqueda. Intente nuevamente.'

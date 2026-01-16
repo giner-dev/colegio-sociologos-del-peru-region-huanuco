@@ -35,6 +35,17 @@
             <div class="search-card-body">
                 <form id="formBuscar">
                     <div class="form-group">
+                        <label for="tipoBusqueda">
+                            <i class="fas fa-filter"></i>
+                            Buscar por
+                        </label>
+                        <select id="tipoBusqueda" class="form-control" style="margin-bottom: 15px;">
+                            <option value="dni">DNI</option>
+                            <option value="numero">Número de Colegiatura</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="groupDni">
                         <label for="dni">
                             <i class="fas fa-id-card"></i>
                             Ingrese el DNI
@@ -47,9 +58,25 @@
                             placeholder="Ej: 12345678"
                             maxlength="8"
                             autocomplete="off"
-                            required
                         >
                         <small class="form-text">Ingrese el número de DNI de 8 dígitos</small>
+                    </div>
+                    
+                    <div class="form-group" id="groupNumero" style="display: none;">
+                        <label for="numero_colegiatura">
+                            <i class="fas fa-hashtag"></i>
+                            Ingrese el Número de Colegiatura
+                        </label>
+                        <input 
+                            type="text" 
+                            id="numero_colegiatura" 
+                            name="numero_colegiatura" 
+                            class="form-control" 
+                            placeholder="Ej: 123 o 00123"
+                            maxlength="10"
+                            autocomplete="off"
+                        >
+                        <small class="form-text">Puede ingresar con o sin ceros a la izquierda</small>
                     </div>
                     
                     <button type="submit" class="btn-search" id="btnBuscar">
