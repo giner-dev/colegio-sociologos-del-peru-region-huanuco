@@ -5,7 +5,7 @@
             Gestión de Colegiados
         </h2>
         <div>
-            <?php if (hasRole(['administrador', 'tesorero'])): ?>
+            <?php if (hasPermission('colegiados', 'crear')): ?>
                 <a href="<?php echo url('colegiados/importar'); ?>" class="btn btn-secondary me-2">
                     <i class="fas fa-file-excel"></i> Importar Excel
                 </a>
@@ -75,12 +75,6 @@
     <div class="card-header bg-results">
         <i class="fas fa-list me-2"></i> 
         Resultados: <strong><?php echo $paginacion['total']; ?></strong> colegiado(s) encontrado(s)
-        <?php if ($paginacion['total'] > 0): ?>
-            <span class="text-muted">
-                (Mostrando <?php echo (($paginacion['pagina_actual'] - 1) * $paginacion['por_pagina']) + 1; ?> 
-                - <?php echo min($paginacion['pagina_actual'] * $paginacion['por_pagina'], $paginacion['total']); ?>)
-            </span>
-        <?php endif; ?>
     </div>
     <div class="card-body">
         <div class="table-responsive">
