@@ -5,7 +5,7 @@
             Gestión de Colegiados
         </h2>
         <div>
-            <?php if (hasPermission('colegiados', 'crear')): ?>
+            <?php if (hasRole(['administrador', 'tesorero'])): ?>
                 <a href="<?php echo url('colegiados/importar'); ?>" class="btn btn-secondary me-2">
                     <i class="fas fa-file-excel"></i> Importar Excel
                 </a>
@@ -23,7 +23,7 @@
         <i class="fas fa-search me-2"></i> Búsqueda de Colegiados
     </div>
     <div class="card-body">
-        <form method="GET" action="<?php echo url('colegiados'); ?>">
+        <form method="GET" action="<?php echo url('colegiados'); ?>" id="formBusqueda">
             <div class="row">
                 <div class="col-md-3">
                     <label class="form-label">N° Colegiatura</label>
@@ -74,7 +74,13 @@
 <div class="card">
     <div class="card-header bg-results">
         <i class="fas fa-list me-2"></i> 
-        Resultados: <strong><?php echo count($colegiados); ?></strong> colegiado(s)
+        Resultados: <strong><?php echo $paginacion['total']; ?></strong> colegiado(s) encontrado(s)
+        <?php if ($paginacion['total'] > 0): ?>
+            <span class="text-muted">
+                (Mostrando <?php echo (($paginacion['pagina_actual'] - 1) * $paginacion['por_pagina']) + 1; ?> 
+                - <?php echo min($paginacion['pagina_actual'] * $paginacion['por_pagina'], $paginacion['total']); ?>)
+            </span>
+        <?php endif; ?>
     </div>
     <div class="card-body">
         <div class="table-responsive">
@@ -137,5 +143,127 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- COMPONENTE DE PAGINACIÓN -->
+        <?php if ($paginacion['total_paginas'] > 1): ?>
+            <div class="pagination-wrapper">
+                <nav aria-label="Navegación de páginas">
+                    <ul class="pagination justify-content-center">
+                        
+                        <!-- Botón Primera Página -->
+                        <?php if ($paginacion['pagina_actual'] > 1): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="<?php echo buildPaginationUrl(1, $filtros); ?>" aria-label="Primera">
+                                    <i class="fas fa-angle-double-left"></i>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        
+                        <!-- Botón Anterior -->
+                        <?php if ($paginacion['pagina_actual'] > 1): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="<?php echo buildPaginationUrl($paginacion['pagina_actual'] - 1, $filtros); ?>" aria-label="Anterior">
+                                    <i class="fas fa-angle-left"></i>
+                                </a>
+                            </li>
+                        <?php else: ?>
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                            </li>
+                        <?php endif; ?>
+                        
+                        <!-- Números de página -->
+                        <?php
+                        $rango = 2; // Páginas a mostrar a cada lado
+                        $inicio = max(1, $paginacion['pagina_actual'] - $rango);
+                        $fin = min($paginacion['total_paginas'], $paginacion['pagina_actual'] + $rango);
+                        
+                        // Mostrar primera página si no está en el rango
+                        if ($inicio > 1): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="<?php echo buildPaginationUrl(1, $filtros); ?>">1</a>
+                            </li>
+                            <?php if ($inicio > 2): ?>
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        
+                        <!-- Páginas del rango -->
+                        <?php for ($i = $inicio; $i <= $fin; $i++): ?>
+                            <li class="page-item <?php echo $i == $paginacion['pagina_actual'] ? 'active' : ''; ?>">
+                                <a class="page-link" href="<?php echo buildPaginationUrl($i, $filtros); ?>">
+                                    <?php echo $i; ?>
+                                </a>
+                            </li>
+                        <?php endfor; ?>
+                        
+                        <!-- Mostrar última página si no está en el rango -->
+                        <?php if ($fin < $paginacion['total_paginas']): ?>
+                            <?php if ($fin < $paginacion['total_paginas'] - 1): ?>
+                                <li class="page-item disabled">
+                                    <span class="page-link">...</span>
+                                </li>
+                            <?php endif; ?>
+                            <li class="page-item">
+                                <a class="page-link" href="<?php echo buildPaginationUrl($paginacion['total_paginas'], $filtros); ?>">
+                                    <?php echo $paginacion['total_paginas']; ?>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        
+                        <!-- Botón Siguiente -->
+                        <?php if ($paginacion['pagina_actual'] < $paginacion['total_paginas']): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="<?php echo buildPaginationUrl($paginacion['pagina_actual'] + 1, $filtros); ?>" aria-label="Siguiente">
+                                    <i class="fas fa-angle-right"></i>
+                                </a>
+                            </li>
+                        <?php else: ?>
+                            <li class="page-item disabled">
+                                <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                            </li>
+                        <?php endif; ?>
+                        
+                        <!-- Botón Última Página -->
+                        <?php if ($paginacion['pagina_actual'] < $paginacion['total_paginas']): ?>
+                            <li class="page-item">
+                                <a class="page-link" href="<?php echo buildPaginationUrl($paginacion['total_paginas'], $filtros); ?>" aria-label="Última">
+                                    <i class="fas fa-angle-double-right"></i>
+                                </a>
+                            </li>
+                        <?php endif; ?>
+                        
+                    </ul>
+                </nav>
+                
+                <!-- Info de paginación -->
+                <div class="pagination-info text-center mt-2">
+                    <small class="text-muted">
+                        Página <?php echo $paginacion['pagina_actual']; ?> de <?php echo $paginacion['total_paginas']; ?>
+                    </small>
+                </div>
+            </div>
+        <?php endif; ?>
+        
     </div>
 </div>
+
+<?php
+/**
+ * Helper para construir URLs de paginación conservando filtros
+ */
+function buildPaginationUrl($pagina, $filtros) {
+    $params = ['pagina' => $pagina];
+    
+    // Agregar filtros activos
+    foreach ($filtros as $key => $value) {
+        if (!empty($value)) {
+            $params[$key] = $value;
+        }
+    }
+    
+    return url('colegiados') . '?' . http_build_query($params);
+}
+?>
