@@ -53,7 +53,7 @@
     </div>
     <div class="card-body">
         <div class="alert alert-warning">
-            <strong>Los siguientes registros fueron omitidos por duplicados:</strong>
+            <strong>Se encontraron los siguientes casos:</strong>
         </div>
         <ul class="list-group">
             <?php foreach ($resultado['advertencias'] as $advertencia): ?>

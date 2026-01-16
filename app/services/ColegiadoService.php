@@ -34,6 +34,9 @@ class ColegiadoService{
             $datos['numero_colegiatura'] = $this->colegiadoRepository->generarNumeroColegiatura();
         }
 
+        // Eliminar ceros a la izquierda (si es "00123" se convierte en "123")
+        $datos['numero_colegiatura'] = ltrim($datos['numero_colegiatura'], '0');
+
         // validar datos
         $errores = $this->validarDatos($datos);
         if (!empty($errores)) {
@@ -41,8 +44,16 @@ class ColegiadoService{
         }
         
         // verificar que no exista el número de colegiatura
-        if ($this->colegiadoRepository->existeNumeroColegiatura($datos['numero_colegiatura'])) {
-            return ['success' => false, 'errors' => ['El número de colegiatura ya existe']];
+        if (!empty($datos['numero_colegiatura'])) {
+            // Verificar si el número ya está asignado a OTRO colegiado (no al mismo)
+            if ($this->colegiadoRepository->existeNumeroColegiatura($datos['numero_colegiatura'])) {
+                // Buscar al colegiado que tiene ese número
+                $colegiadoConNumero = $this->colegiadoRepository->findByNumeroColegiatura($datos['numero_colegiatura']);
+                // Si es el MISMO colegiado (mismo DNI), está bien
+                if ($colegiadoConNumero && $colegiadoConNumero->dni !== $datos['dni']) {
+                    return ['success' => false, 'errors' => ['El número de colegiatura ya está asignado a otro colegiado']];
+                }
+            }
         }
         
         // verificar que no exista el DNI
@@ -82,6 +93,11 @@ class ColegiadoService{
         $colegiado = $this->colegiadoRepository->findById($id);
         if (!$colegiado) {
             return ['success' => false, 'errors' => ['Colegiado no encontrado']];
+        }
+
+        // Eliminar ceros a la izquierda antes de validar y actualizar
+        if (!empty($datos['numero_colegiatura'])) {
+            $datos['numero_colegiatura'] = ltrim($datos['numero_colegiatura'], '0');
         }
         
         // Validar datos

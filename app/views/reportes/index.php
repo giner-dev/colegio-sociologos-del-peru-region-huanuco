@@ -83,7 +83,7 @@
                         <div class="d-flex align-items-center">
                             <i class="fas fa-exclamation-triangle text-warning me-3" style="font-size: 1.5rem;"></i>
                             <div>
-                                <h6 class="mb-0">Colegiados Morosos</h6>
+                                <h6 class="mb-0">Colegiados Morosos (Deudores)</h6>
                                 <small class="text-muted">Colegiados con deudas pendientes</small>
                             </div>
                         </div>

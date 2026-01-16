@@ -6,7 +6,7 @@
         </h2>
         <div>
             <a href="<?php echo url('deudas/morosos'); ?>" class="btn btn-warning me-2">
-                <i class="fas fa-exclamation-triangle me-1"></i> Ver Morosos
+                <i class="fas fa-exclamation-triangle me-1"></i> Ver Morosos (Deudores)
             </a>
             <?php if (hasPermission('deudas', 'crear')): ?>
                 <a href="<?php echo url('deudas/registrar'); ?>" class="btn btn-primary">

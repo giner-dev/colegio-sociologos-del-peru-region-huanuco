@@ -221,6 +221,17 @@ class ColegiadoRepository{
 
     // crear un nuevo colegiado
     public function create($data) {
+        // Validar si el número ya existe
+        if (!empty($data['numero_colegiatura'])) {
+            $existeNumero = $this->existeNumeroColegiatura($data['numero_colegiatura']);
+            if ($existeNumero) {
+                // Buscar al colegiado con ese número
+                $colegiadoExistente = $this->findByNumeroColegiatura($data['numero_colegiatura']);
+                // Si existe, NO creamos duplicado
+                throw new Exception("El número de colegiatura {$data['numero_colegiatura']} ya está asignado a otro colegiado");
+            }
+        }
+
         $sql = "INSERT INTO colegiados (
                     numero_colegiatura, dni, nombres, apellido_paterno, apellido_materno,
                     fecha_colegiatura, telefono, correo, direccion, fecha_nacimiento,
@@ -230,10 +241,9 @@ class ColegiadoRepository{
                     :fecha_colegiatura, :telefono, :correo, :direccion, :fecha_nacimiento,
                     :estado, :observaciones
                 )";
-        
+
         return $this->db->insert($sql, $data);
     }
-
     // actualizar un colegiado existente
     public function update($id, $data) {
         $sql = "UPDATE colegiados SET
@@ -308,21 +318,18 @@ class ColegiadoRepository{
 
     // verifica si existe un número de colegiatura
     public function existeNumeroColegiatura($numero, $excludeId = null) {
+        // Aseguramos que sea un entero para la comparación
         $numeroInt = intval($numero);
         
+        $params = ['numero' => $numeroInt];
+        $sql = "SELECT COUNT(*) as total FROM colegiados WHERE CAST(numero_colegiatura AS UNSIGNED) = :numero";
+        
         if ($excludeId) {
-            $sql = "SELECT COUNT(*) as total 
-                    FROM colegiados 
-                    WHERE CAST(numero_colegiatura AS UNSIGNED) = :numero 
-                    AND idColegiados != :id";
-            $result = $this->db->queryOne($sql, ['numero' => $numeroInt, 'id' => $excludeId]);
-        } else {
-            $sql = "SELECT COUNT(*) as total 
-                    FROM colegiados 
-                    WHERE CAST(numero_colegiatura AS UNSIGNED) = :numero";
-            $result = $this->db->queryOne($sql, ['numero' => $numeroInt]);
+            $sql .= " AND idColegiados != :id";
+            $params['id'] = $excludeId;
         }
-
+    
+        $result = $this->db->queryOne($sql, $params);
         return $result['total'] > 0;
     }
 

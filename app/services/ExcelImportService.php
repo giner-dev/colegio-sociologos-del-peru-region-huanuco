@@ -11,6 +11,10 @@ class ExcelImportService{
     private $importados = 0;
     private $omitidos = 0;
 
+    // Contadores para el resumen
+    private $numPropios = 0;
+    private $numAutomaticos = 0;
+
     public function __construct(){
         $this->colegiadoRepository = new ColegiadoRepository();
     }
@@ -22,6 +26,8 @@ class ExcelImportService{
         $this->advertencias = [];
         $this->importados = 0;
         $this->omitidos = 0;
+        $this->numPropios = 0;
+        $this->numAutomaticos = 0;
         
         // Validar archivo
         $validacion = $this->validarArchivo($archivo);
@@ -34,8 +40,6 @@ class ExcelImportService{
             $rutaArchivo = $archivo['tmp_name'];
             $spreadsheet = IOFactory::load($rutaArchivo);
             $worksheet = $spreadsheet->getActiveSheet();
-            
-            // Obtener todas las filas
             $filas = $worksheet->toArray();
             
             // Validar que tenga datos
@@ -55,7 +59,7 @@ class ExcelImportService{
             if (empty($mapeo)) {
                 return [
                     'success' => false,
-                    'message' => 'No se pudieron identificar las columnas requeridas en el archivo'
+                    'message' => 'No se pudieron identificar las columnas requeridas (DNI, Nombres, Apellidos, etc.)'
                 ];
             }
             
@@ -75,8 +79,13 @@ class ExcelImportService{
                 // Procesar el registro
                 $this->procesarRegistro($datos, $numeroFila);
             }
-            
-            logMessage("Importación Excel completada: {$this->importados} importados, {$this->omitidos} omitidos", 'info');
+
+            if ($this->numPropios > 0) {
+                $this->advertencias[] = "Se utilizaron {$this->numPropios} números de colegiatura propios del Excel.";
+            }
+            if ($this->numAutomaticos > 0) {
+                $this->advertencias[] = "Se generaron {$this->numAutomaticos} números de colegiatura automáticamente.";
+            }
             
             return [
                 'success' => true,
@@ -127,9 +136,8 @@ class ExcelImportService{
     private function mapearEncabezados($encabezados) {
         $mapeo = [];
         
-        // Posibles variaciones de nombres de columnas
         $variaciones = [
-            'numero_colegiatura' => ['numero de colegiatura', 'n° colegiatura', 'numero colegiatura', 'colegiatura', 'nro colegiatura'],
+            'numero_colegiatura' => ['numero de colegiatura', 'n° colegiatura', 'numero colegiatura', 'colegiatura', 'nro colegiatura', 'num colegiatura'],
             'dni' => ['dni', 'documento', 'numero de documento'],
             'nombres' => ['nombres', 'nombre'],
             'apellido_paterno' => ['apellido paterno', 'ape paterno', 'primer apellido'],
@@ -141,26 +149,34 @@ class ExcelImportService{
             'fecha_nacimiento' => ['fecha de nacimiento', 'fecha nacimiento', 'f. nacimiento', 'nacimiento'],
             'observaciones' => ['observaciones', 'obs', 'notas', 'comentarios']
         ];
-        
+
         foreach ($encabezados as $indice => $encabezado) {
-            $encabezadoNormalizado = strtolower(trim($encabezado));
-            
+            // 1. Convertir a minúsculas
+            $normalized = mb_strtolower(trim($encabezado), 'UTF-8');
+
+            // 2. Eliminar contenido entre paréntesis
+            $normalized = preg_replace('/\s*\(.*?\)\s*/', '', $normalized);
+
+            // 3. Normalizar símbolos comunes (n°, nro. -> numero)
+            $normalized = str_replace(['n°', 'nro.', 'nro', 'num.'], 'numero', $normalized);
+            $normalized = trim($normalized);
+
             foreach ($variaciones as $campo => $posibles) {
-                if (in_array($encabezadoNormalizado, $posibles)) {
+                if (in_array($normalized, $posibles)) {
                     $mapeo[$campo] = $indice;
                     break;
                 }
             }
         }
-        
+
         // Verificar campos obligatorios
         $obligatorios = ['dni', 'nombres', 'apellido_paterno', 'apellido_materno', 'fecha_colegiatura'];
         foreach ($obligatorios as $campo) {
             if (!isset($mapeo[$campo])) {
-                return [];
+                return []; // O podrías lanzar una excepción indicando qué columna falta
             }
         }
-        
+
         return $mapeo;
     }
 
@@ -225,58 +241,77 @@ class ExcelImportService{
 
     // procesa un registro individual
     private function procesarRegistro($datos, $numeroFila) {
-        // Si no viene número de colegiatura, generar uno automáticamente
-        if (empty($datos['numero_colegiatura'])) {
-            $datos['numero_colegiatura'] = $this->colegiadoRepository->generarNumeroColegiatura();
-        }
-
-        // Validar datos básicos
-        $erroresFila = $this->validarDatosFila($datos, $numeroFila);
         
+        // Normalización robusta de ceros a la izquierda
+        $numeroExcel = null;
+        if (isset($datos['numero_colegiatura']) && trim($datos['numero_colegiatura']) !== '') {
+            // Quitamos espacios y luego quitamos ceros a la izquierda
+            $numeroExcel = ltrim(trim($datos['numero_colegiatura']), '0');
+            
+            // Si el número era "000", ltrim lo deja vacío, en ese caso lo tratamos como "0"
+            if ($numeroExcel === '') {
+                $numeroExcel = '0';
+            }
+        }
+    
+        // PASO 2: Validar datos básicos
+        $erroresFila = $this->validarDatosFila($datos, $numeroFila);
         if (!empty($erroresFila)) {
             $this->errores[] = "Fila $numeroFila: " . implode(', ', $erroresFila);
             $this->omitidos++;
             return;
         }
-        
-        // Verificar si ya existe por DNI
-        if ($this->colegiadoRepository->existeDni($datos['dni'])) {
-            $this->advertencias[] = "Fila $numeroFila: DNI {$datos['dni']} ya existe, registro omitido";
-            $this->omitidos++;
+    
+        // PASO 3: Verificar si ya existe por DNI
+        $colegiadoExistente = $this->colegiadoRepository->findByDni($datos['dni']);
+        if ($colegiadoExistente) {
+            // Actualizamos enviando el número del excel procesado
+            $datos['numero_colegiatura'] = $numeroExcel; 
+            $this->actualizarColegiadoExistente($colegiadoExistente, $datos, $numeroFila);
             return;
         }
+    
+        // --- CAMBIO 2: Lógica de asignación de número ---
+        $numeroAUsar = null;
+    
+        // Solo generamos automático si REALMENTE no hay nada en el Excel
+        if ($numeroExcel !== null && $numeroExcel !== '') {
+            // Verificar si el número ya existe en otro colegiado
+            $colegiadoPorNumero = $this->colegiadoRepository->findByNumeroColegiatura($numeroExcel);
         
-        // Verificar si ya existe por número de colegiatura
-        if ($this->colegiadoRepository->existeNumeroColegiatura($datos['numero_colegiatura'])) {
-            $this->advertencias[] = "Fila $numeroFila: Número de colegiatura {$datos['numero_colegiatura']} ya existe, registro omitido";
-            $this->omitidos++;
-            return;
+            if ($colegiadoPorNumero) {
+                $this->errores[] = "Fila $numeroFila: El número $numeroExcel ya está asignado al DNI {$colegiadoPorNumero->dni}";
+                $this->omitidos++;
+                return;
+            }
+            $numeroAUsar = $numeroExcel;
+            $this->numPropios++;
+        } else {
+            // Generar automático solo si el campo está vacío en el Excel
+            $numeroAUsar = $this->colegiadoRepository->generarNumeroColegiatura();
+            $this->numAutomaticos++;
         }
-        
-        // Preparar datos para inserción
+    
+        // PASO 5: Preparar e Insertar
         $datosInsert = [
-            'numero_colegiatura' => $datos['numero_colegiatura'],
-            'dni' => $datos['dni'],
-            'nombres' => $datos['nombres'],
-            'apellido_paterno' => $datos['apellido_paterno'],
-            'apellido_materno' => $datos['apellido_materno'],
-            'fecha_colegiatura' => $datos['fecha_colegiatura'],
-            'telefono' => $datos['telefono'] ?? null,
-            'correo' => $datos['correo'] ?? null,
-            'direccion' => $datos['direccion'] ?? null,
-            'fecha_nacimiento' => $datos['fecha_nacimiento'] ?? null,
-            'estado' => 'inhabilitado',
-            'observaciones' => $datos['observaciones'] ?? null
+            'numero_colegiatura' => $numeroAUsar,
+            'dni'                => $datos['dni'],
+            'nombres'            => $datos['nombres'],
+            'apellido_paterno'   => $datos['apellido_paterno'],
+            'apellido_materno'   => $datos['apellido_materno'],
+            'fecha_colegiatura'  => $datos['fecha_colegiatura'],
+            'telefono'           => $datos['telefono'] ?? null,
+            'correo'             => $datos['correo'] ?? null,
+            'direccion'          => $datos['direccion'] ?? null,
+            'fecha_nacimiento'   => $datos['fecha_nacimiento'] ?? null,
+            'estado'             => 'inhabilitado',
+            'observaciones'      => $datos['observaciones'] ?? null
         ];
-        
-        // Insertar en base de datos
+    
         try {
             $id = $this->colegiadoRepository->create($datosInsert);
             if ($id) {
                 $this->importados++;
-            } else {
-                $this->errores[] = "Fila $numeroFila: Error al insertar en base de datos";
-                $this->omitidos++;
             }
         } catch (Exception $e) {
             $this->errores[] = "Fila $numeroFila: " . $e->getMessage();
@@ -284,13 +319,68 @@ class ExcelImportService{
         }
     }
 
+    // MÉTODO PARA ACTUALIZAR REGISTROS EXISTENTES
+    private function actualizarColegiadoExistente($colegiado, $datos, $numeroFila) {
+        try {
+            // Verificar si el número del Excel es diferente al que ya tiene
+            if (!empty($datos['numero_colegiatura']) && 
+                $datos['numero_colegiatura'] != $colegiado->numero_colegiatura) {
+                
+                // Verificar si el nuevo número ya existe en OTRO colegiado
+                $colegiadoConNuevoNumero = $this->colegiadoRepository
+                    ->findByNumeroColegiatura($datos['numero_colegiatura']);
+                
+                if ($colegiadoConNuevoNumero && 
+                    $colegiadoConNuevoNumero->idColegiados != $colegiado->idColegiados) {
+                    $this->advertencias[] = "Fila $numeroFila: No se pudo cambiar número de {$colegiado->numero_colegiatura} a {$datos['numero_colegiatura']} porque ya existe";
+                    // No cambiamos el número
+                    $nuevoNumero = $colegiado->numero_colegiatura;
+                } else {
+                    // Podemos cambiar el número
+                    $nuevoNumero = $datos['numero_colegiatura'];
+                    $this->numPropios++;
+                }
+            } else {
+                // Mantener número actual
+                $nuevoNumero = $colegiado->numero_colegiatura;
+            }
+
+            // Preparar datos para actualización
+            $datosUpdate = [
+                'numero_colegiatura' => $nuevoNumero,
+                'dni' => $colegiado->dni, // Mantener DNI original
+                'nombres' => $datos['nombres'] ?? $colegiado->nombres,
+                'apellido_paterno' => $datos['apellido_paterno'] ?? $colegiado->apellido_paterno,
+                'apellido_materno' => $datos['apellido_materno'] ?? $colegiado->apellido_materno,
+                'fecha_colegiatura' => $datos['fecha_colegiatura'] ?? $colegiado->fecha_colegiatura,
+                'telefono' => $datos['telefono'] ?? $colegiado->telefono,
+                'correo' => $datos['correo'] ?? $colegiado->correo,
+                'direccion' => $datos['direccion'] ?? $colegiado->direccion,
+                'fecha_nacimiento' => $datos['fecha_nacimiento'] ?? $colegiado->fecha_nacimiento,
+                'observaciones' => $datos['observaciones'] ?? $colegiado->observaciones
+            ];
+
+            // Actualizar el registro existente
+            $resultado = $this->colegiadoRepository->update($colegiado->idColegiados, $datosUpdate);
+
+            if ($resultado) {
+                $this->importados++;
+                $this->advertencias[] = "Fila $numeroFila: Colegiado {$colegiado->dni} actualizado";
+                logMessage("Colegiado actualizado desde importación: ID {$colegiado->idColegiados}", 'info');
+            } else {
+                $this->errores[] = "Fila $numeroFila: Error al actualizar colegiado existente {$colegiado->dni}";
+                $this->omitidos++;
+            }
+
+        } catch (Exception $e) {
+            $this->errores[] = "Fila $numeroFila: Error al actualizar {$colegiado->dni} - " . $e->getMessage();
+            $this->omitidos++;
+        }
+    }
+
     // valida los datos de una fila
     private function validarDatosFila($datos, $numeroFila) {
         $errores = [];
-        
-        //if (empty($datos['numero_colegiatura'])) {
-        //    $errores[] = 'Número de colegiatura vacío';
-        //}
         
         if (empty($datos['dni'])) {
             $errores[] = 'DNI vacío';
