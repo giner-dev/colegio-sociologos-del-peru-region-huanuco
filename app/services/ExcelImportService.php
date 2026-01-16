@@ -296,9 +296,9 @@ class ExcelImportService{
         $datosInsert = [
             'numero_colegiatura' => $numeroAUsar,
             'dni'                => $datos['dni'],
-            'nombres'            => $datos['nombres'],
-            'apellido_paterno'   => $datos['apellido_paterno'],
-            'apellido_materno'   => $datos['apellido_materno'],
+            'nombres'            => mb_strtoupper(trim($datos['nombres']), 'UTF-8'),
+            'apellido_paterno'   => mb_strtoupper(trim($datos['apellido_paterno']), 'UTF-8'),
+            'apellido_materno'   => mb_strtoupper(trim($datos['apellido_materno']), 'UTF-8'),
             'fecha_colegiatura'  => $datos['fecha_colegiatura'],
             'telefono'           => $datos['telefono'] ?? null,
             'correo'             => $datos['correo'] ?? null,
@@ -349,9 +349,9 @@ class ExcelImportService{
             $datosUpdate = [
                 'numero_colegiatura' => $nuevoNumero,
                 'dni' => $colegiado->dni, // Mantener DNI original
-                'nombres' => $datos['nombres'] ?? $colegiado->nombres,
-                'apellido_paterno' => $datos['apellido_paterno'] ?? $colegiado->apellido_paterno,
-                'apellido_materno' => $datos['apellido_materno'] ?? $colegiado->apellido_materno,
+                'nombres' => mb_strtoupper(trim($datos['nombres'] ?? $colegiado->nombres), 'UTF-8'),
+                'apellido_paterno' => mb_strtoupper(trim($datos['apellido_paterno'] ?? $colegiado->apellido_paterno), 'UTF-8'),
+                'apellido_materno' => mb_strtoupper(trim($datos['apellido_materno'] ?? $colegiado->apellido_materno), 'UTF-8'),
                 'fecha_colegiatura' => $datos['fecha_colegiatura'] ?? $colegiado->fecha_colegiatura,
                 'telefono' => $datos['telefono'] ?? $colegiado->telefono,
                 'correo' => $datos['correo'] ?? $colegiado->correo,

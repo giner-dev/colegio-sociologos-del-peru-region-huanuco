@@ -34,8 +34,12 @@ class ColegiadoService{
             $datos['numero_colegiatura'] = $this->colegiadoRepository->generarNumeroColegiatura();
         }
 
-        // Eliminar ceros a la izquierda (si es "00123" se convierte en "123")
+        // Eliminar ceros a la izquierda
         $datos['numero_colegiatura'] = ltrim($datos['numero_colegiatura'], '0');
+
+        $datos['nombres'] = mb_strtoupper(trim($datos['nombres'] ?? ''), 'UTF-8');
+        $datos['apellido_paterno'] = mb_strtoupper(trim($datos['apellido_paterno'] ?? ''), 'UTF-8');
+        $datos['apellido_materno'] = mb_strtoupper(trim($datos['apellido_materno'] ?? ''), 'UTF-8');
 
         // validar datos
         $errores = $this->validarDatos($datos);
@@ -99,6 +103,10 @@ class ColegiadoService{
         if (!empty($datos['numero_colegiatura'])) {
             $datos['numero_colegiatura'] = ltrim($datos['numero_colegiatura'], '0');
         }
+
+        $datos['nombres'] = mb_strtoupper(trim($datos['nombres'] ?? ''), 'UTF-8');
+        $datos['apellido_paterno'] = mb_strtoupper(trim($datos['apellido_paterno'] ?? ''), 'UTF-8');
+        $datos['apellido_materno'] = mb_strtoupper(trim($datos['apellido_materno'] ?? ''), 'UTF-8');
         
         // Validar datos
         $errores = $this->validarDatos($datos, $id);

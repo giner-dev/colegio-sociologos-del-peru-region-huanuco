@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initConfirmations();
     initPhoneFormatting();
     initDNIValidation();
+    initUpperCaseInputs();
 });
 
 // ===================================
@@ -464,6 +465,23 @@ document.addEventListener('DOMContentLoaded', function() {
     formatAllNumeroColegiatura();
 });
 
+// ===================================
+// CONVERTIR A MAYÚSCULAS EN TIEMPO REAL
+// ===================================
+function initUpperCaseInputs() {
+    const upperCaseInputs = document.querySelectorAll(
+        'input[name="nombres"], input[name="apellido_paterno"], input[name="apellido_materno"]'
+    );
+    
+    upperCaseInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const start = this.selectionStart;
+            const end = this.selectionEnd;
+            this.value = this.value.toUpperCase();
+            this.setSelectionRange(start, end);
+        });
+    });
+}
 
 // ===================================
 // EXPORTAR FUNCIONES GLOBALES
