@@ -158,7 +158,13 @@
 <!-- Historial de Pagos -->
 <div class="card mb-4">
     <div class="card-header bg-success">
-        <i class="fas fa-money-bill-wave me-2"></i> Historial de Pagos
+        <i class="fas fa-money-bill-wave me-2"></i> 
+        Historial de Pagos
+        <?php if (!empty($historial_pagos)): ?>
+            <span>
+                | Últimos <?php echo count($historial_pagos); ?> registros
+            </span>
+        <?php endif; ?>
     </div>
     <div class="card-body">
         <?php if (!empty($historial_pagos)): ?>
@@ -179,7 +185,17 @@
                             <tr>
                                 <td data-label="Fecha"><?php echo formatDate($pago['fecha_pago']); ?></td>
                                 <td data-label="Concepto">
-                                    <div><strong><?php echo e($pago['concepto_nombre'] ?? 'Sin concepto'); ?></strong></div>
+                                    <?php if (!empty($pago['es_deuda_manual'])): ?>
+                                        <div>
+                                            <span class="badge bg-secondary mb-1">
+                                                <i class="fas fa-edit"></i> Deuda Manual
+                                            </span>
+                                        </div>
+                                        <strong><?php echo e($pago['concepto_manual'] ?? 'Sin concepto'); ?></strong>
+                                    <?php else: ?>
+                                        <strong><?php echo e($pago['concepto_nombre'] ?? 'Sin concepto'); ?></strong>
+                                    <?php endif; ?>
+                                    <br>
                                     <small class="text-muted"><?php echo e($pago['descripcion_deuda']); ?></small>
                                 </td>
                                 <td data-label="Monto"><strong><?php echo formatMoney($pago['monto']); ?></strong></td>
@@ -215,7 +231,13 @@
 <!-- Deudas Pendientes -->
 <div class="card mb-4">
     <div class="card-header bg-danger">
-        <i class="fas fa-exclamation-triangle me-2"></i> Deudas Pendientes
+        <i class="fas fa-exclamation-triangle me-2"></i> 
+        Deudas Pendientes
+        <?php if (!empty($deudas)): ?>
+            <span>
+                | <?php echo count($deudas); ?> deuda(s)
+            </span>
+        <?php endif; ?>
     </div>
     <div class="card-body">
         <?php if (!empty($deudas)): ?>
@@ -242,7 +264,15 @@
                         ?>
                             <tr>
                                 <td data-label="Concepto">
-                                    <strong><?php echo e($deuda['concepto_nombre'] ?? 'Sin concepto'); ?></strong>
+                                    <?php if (!empty($deuda['es_deuda_manual'])): ?>
+                                        <span class="badge bg-secondary mb-1">
+                                            <i class="fas fa-edit"></i> Manual
+                                        </span>
+                                        <br>
+                                        <strong><?php echo e($deuda['concepto_manual'] ?? 'Sin concepto'); ?></strong>
+                                    <?php else: ?>
+                                        <strong><?php echo e($deuda['concepto_nombre'] ?? 'Sin concepto'); ?></strong>
+                                    <?php endif; ?>
                                 </td>
                                 <td data-label="Descripción">
                                     <?php echo e($deuda['descripcion_deuda']); ?>
@@ -296,7 +326,11 @@
 <?php if (!empty($historial_estados)): ?>
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-secondary text-white">
-            <i class="fas fa-history me-2"></i> Historial de Cambios de Estado
+            <i class="fas fa-history me-2"></i> 
+            Historial de Cambios de Estado
+            <span>
+                | Últimos <?php echo count($historial_estados); ?> cambios
+            </span>
         </div>
         <div class="card-body">
             <div class="table-responsive">

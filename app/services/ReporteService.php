@@ -32,14 +32,17 @@ class ReporteService {
                     p.monto,
                     c.numero_colegiatura,
                     CONCAT(c.apellido_paterno, ' ', c.apellido_materno, ', ', c.nombres) as colegiado,
-                    cp.nombre_completo as concepto,
+                    CASE 
+                        WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                        ELSE COALESCE(cp.nombre_completo, 'Sin concepto')
+                    END as concepto,
                     mp.nombre as metodo_pago,
                     p.numero_comprobante,
                     p.estado
                 FROM pagos p
                 INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
                 INNER JOIN deudas d ON p.deuda_id = d.idDeuda
-                INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
+                LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
                 INNER JOIN metodo_pago mp ON p.metodo_pago_id = mp.idMetodo
                 WHERE p.fecha_pago BETWEEN :fecha_inicio AND :fecha_fin
                 AND p.estado = 'confirmado'

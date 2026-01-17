@@ -354,18 +354,19 @@ class ColegiadoRepository{
     }
 
     // obtener el historial de cambios de estado
-    public function getHistorialEstados($idColegiado) {
+    public function getHistorialEstados($idColegiado, $limit = 10) {
         $sql = "SELECT h.*, u.nombre_usuario 
                 FROM historial_estados h
                 LEFT JOIN usuarios u ON h.usuario_id = u.idUsuario
                 WHERE h.colegiado_id = :id
-                ORDER BY h.fecha_cambio DESC";
+                ORDER BY h.fecha_cambio DESC
+                LIMIT :limit";
         
-        return $this->db->query($sql, ['id' => $idColegiado]);
+        return $this->db->query($sql, ['id' => $idColegiado, 'limit' => $limit]);
     }
 
     // obtiene el historial de pagos de un colegiado
-    public function getHistorialPagos($idColegiado) {
+    public function getHistorialPagos($idColegiado, $limit = 20) {
         $sql = "SELECT 
                     p.idPago,
                     p.monto,
@@ -375,6 +376,8 @@ class ColegiadoRepository{
                     p.estado,
                     p.observaciones,
                     d.descripcion_deuda,
+                    d.es_deuda_manual,
+                    d.concepto_manual,
                     c.nombre_completo as concepto_nombre,
                     mp.nombre as metodo_pago_nombre,
                     u.nombre_usuario
@@ -384,15 +387,21 @@ class ColegiadoRepository{
                 LEFT JOIN metodo_pago mp ON p.metodo_pago_id = mp.idMetodo
                 LEFT JOIN usuarios u ON p.usuario_registro_id = u.idUsuario
                 WHERE p.colegiado_id = :id
-                ORDER BY p.fecha_pago DESC";
+                ORDER BY p.fecha_pago DESC
+                LIMIT :limit";
 
-        return $this->db->query($sql, ['id' => $idColegiado]);
+        return $this->db->query($sql, ['id' => $idColegiado, 'limit' => $limit]);
     }
 
     // obtener las deudas de un colegiado
-    public function getDeudas($idColegiado) {
+    public function getDeudas($idColegiado, $soloActivas = true) {
+        $whereEstado = $soloActivas ? "AND d.estado IN ('pendiente', 'parcial', 'vencido')" : "";
+        
         $sql = "SELECT 
                     d.idDeuda,
+                    d.concepto_id,
+                    d.concepto_manual,
+                    d.es_deuda_manual,
                     d.descripcion_deuda,
                     d.monto_esperado,
                     d.monto_pagado,
@@ -408,8 +417,9 @@ class ColegiadoRepository{
                 FROM deudas d
                 LEFT JOIN conceptos_pago c ON d.concepto_id = c.idConcepto
                 WHERE d.colegiado_id = :id 
+                $whereEstado
                 ORDER BY d.fecha_vencimiento ASC";
-        
+
         return $this->db->query($sql, ['id' => $idColegiado]);
     }
 }

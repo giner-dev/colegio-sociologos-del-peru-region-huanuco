@@ -28,7 +28,7 @@ class PagoRepository {
                 FROM pagos p
                 INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
                 INNER JOIN deudas d ON p.deuda_id = d.idDeuda
-                INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
+                LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
                 INNER JOIN metodo_pago mp ON p.metodo_pago_id = mp.idMetodo
                 INNER JOIN usuarios ur ON p.usuario_registro_id = ur.idUsuario
                 LEFT JOIN usuarios uc ON p.usuario_confirmacion_id = uc.idUsuario
@@ -154,7 +154,7 @@ class PagoRepository {
                 FROM pagos p
                 INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
                 INNER JOIN deudas d ON p.deuda_id = d.idDeuda
-                INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
+                LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
                 INNER JOIN metodo_pago mp ON p.metodo_pago_id = mp.idMetodo
                 INNER JOIN usuarios ur ON p.usuario_registro_id = ur.idUsuario
                 LEFT JOIN usuarios uc ON p.usuario_confirmacion_id = uc.idUsuario
@@ -359,7 +359,7 @@ class PagoRepository {
                 FROM pagos p
                 INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
                 INNER JOIN deudas d ON p.deuda_id = d.idDeuda
-                INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
+                LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
                 INNER JOIN metodo_pago mp ON p.metodo_pago_id = mp.idMetodo
                 WHERE p.colegiado_id = :colegiado_id
                 ORDER BY p.fecha_pago DESC
