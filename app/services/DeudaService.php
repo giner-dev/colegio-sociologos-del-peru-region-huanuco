@@ -55,21 +55,18 @@ class DeudaService {
         if (!empty($errores)) {
             return ['success' => false, 'errors' => $errores];
         }
-        
+
         // Determinar estado según fecha de vencimiento
         $estado = $this->determinarEstado($datos['fecha_vencimiento']);
-        
-        // Obtener información del concepto
-        $concepto = $this->deudaRepository->findConceptoById($datos['concepto_id']);
-        
-        // Si no viene descripción, usar el nombre del concepto
-        if (empty($datos['descripcion_deuda'])) {
-            $datos['descripcion_deuda'] = $concepto['nombre_completo'] ?? 'Deuda registrada';
-        }
-        
+
+        // LÓGICA PARA DEUDAS MANUALES
+        $esDeudaManual = !empty($datos['es_deuda_manual']) || empty($datos['concepto_id']);
+
         $datosInsert = [
             'colegiado_id' => $datos['colegiado_id'],
-            'concepto_id' => $datos['concepto_id'],
+            'concepto_id' => $esDeudaManual ? null : $datos['concepto_id'],
+            'concepto_manual' => $esDeudaManual ? $datos['concepto_manual'] : null,
+            'es_deuda_manual' => $esDeudaManual ? 1 : 0,
             'descripcion_deuda' => $datos['descripcion_deuda'],
             'monto_esperado' => $datos['monto_esperado'],
             'fecha_generacion' => date('Y-m-d'),
@@ -82,20 +79,20 @@ class DeudaService {
             'usuario_generador_id' => $datos['usuario_generador_id'] ?? null,
             'observaciones' => $datos['observaciones'] ?? null
         ];
-        
+
         try {
             $id = $this->deudaRepository->create($datosInsert);
-            
+
             if ($id) {
-                // Actualizar estado del colegiado si es necesario
                 $this->actualizarEstadoColegiado($datos['colegiado_id']);
-                
-                logMessage("Deuda registrada: ID $id - Colegiado {$datos['colegiado_id']} - Monto {$datos['monto_esperado']}", 'info');
+
+                $tipoDeuda = $esDeudaManual ? 'manual libre' : 'con concepto';
+                logMessage("Deuda registrada ($tipoDeuda): ID $id - Colegiado {$datos['colegiado_id']} - Monto {$datos['monto_esperado']}", 'info');
                 return ['success' => true, 'id' => $id];
             }
-            
+
             return ['success' => false, 'errors' => ['Error al registrar la deuda']];
-            
+
         } catch (Exception $e) {
             logMessage("Error al registrar deuda: " . $e->getMessage(), 'error');
             return ['success' => false, 'errors' => ['Error interno del sistema: ' . $e->getMessage()]];
@@ -344,31 +341,40 @@ class DeudaService {
         if (!$esActualizacion && empty($datos['colegiado_id'])) {
             $errores[] = 'Debe seleccionar un colegiado';
         } elseif (!$esActualizacion) {
-            // Verificar que el colegiado exista
             $colegiado = $this->colegiadoRepository->findById($datos['colegiado_id']);
             if (!$colegiado) {
                 $errores[] = 'El colegiado seleccionado no existe';
             }
         }
-        
-        if (empty($datos['concepto_id'])) {
-            $errores[] = 'Debe seleccionar un concepto';
+
+        // VALIDACIÓN PARA DEUDAS MANUALES
+        $esDeudaManual = !empty($datos['es_deuda_manual']) || empty($datos['concepto_id']);
+
+        if ($esDeudaManual) {
+            // Si es deuda manual, validar concepto_manual
+            if (empty($datos['concepto_manual'])) {
+                $errores[] = 'Debe ingresar una descripción para la deuda manual';
+            }
         } else {
-            // Verificar que el concepto exista
-            $concepto = $this->deudaRepository->findConceptoById($datos['concepto_id']);
-            if (!$concepto) {
-                $errores[] = 'El concepto seleccionado no existe';
+            // Si no es manual, validar concepto_id
+            if (empty($datos['concepto_id'])) {
+                $errores[] = 'Debe seleccionar un concepto o crear una deuda manual';
+            } else {
+                $concepto = $this->deudaRepository->findConceptoById($datos['concepto_id']);
+                if (!$concepto) {
+                    $errores[] = 'El concepto seleccionado no existe';
+                }
             }
         }
-        
+
         if (empty($datos['monto_esperado']) || $datos['monto_esperado'] <= 0) {
             $errores[] = 'El monto debe ser mayor a 0';
         }
-        
+
         if (empty($datos['fecha_vencimiento'])) {
             $errores[] = 'La fecha de vencimiento es obligatoria';
         }
-        
+
         return $errores;
     }
 

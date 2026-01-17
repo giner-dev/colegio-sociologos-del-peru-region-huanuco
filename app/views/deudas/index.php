@@ -168,7 +168,16 @@
                                         <?php echo e($deuda->getNombreCompleto()); ?>
                                     </a>
                                 </td>
-                                <td><?php echo e($deuda->concepto_nombre ?? $deuda->descripcion_deuda); ?></td>
+                                <td>
+                                    <?php if ($deuda->es_deuda_manual): ?>
+                                        <span class="badge bg-secondary mb-1">
+                                            <i class="fas fa-edit"></i> Manual
+                                        </span>
+                                        <br><?php echo e($deuda->getNombreConcepto()); ?>
+                                    <?php else: ?>
+                                        <?php echo e($deuda->concepto_nombre ?? $deuda->descripcion_deuda); ?>
+                                    <?php endif; ?>
+                                </td>
                                 <td><strong class="text-danger"><?php echo formatMoney($deuda->monto_esperado); ?></strong></td>
                                 <td class="text-success"><?php echo formatMoney($deuda->monto_pagado); ?></td>
                                 <td>

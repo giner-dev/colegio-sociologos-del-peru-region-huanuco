@@ -30,36 +30,92 @@
                     <small class="text-muted">Haga clic en el botón para buscar y seleccionar un colegiado</small>
                 </div>
             </div>
-            
-            <div class="row">
-                <div class="col-md-6 mb-3">
-                    <label class="form-label required">Concepto de la Deuda</label>
-                    <select name="concepto_id" id="selectConcepto" class="form-select" required>
-                        <option value="">Seleccione un concepto...</option>
-                        <?php foreach ($conceptos as $concepto): ?>
-                            <option value="<?php echo $concepto['idConcepto']; ?>" 
-                                    data-monto="<?php echo $concepto['monto_sugerido']; ?>"
-                                    data-recurrente="<?php echo $concepto['es_recurrente'] ? '1' : '0'; ?>"
-                                    data-frecuencia="<?php echo e($concepto['frecuencia'] ?? ''); ?>"
-                                    data-dia-vencimiento="<?php echo $concepto['dia_vencimiento'] ?? ''; ?>">
-                                <?php echo e($concepto['nombre_completo']); ?> 
-                                <?php if ($concepto['es_recurrente']): ?>
-                                    <span class="badge bg-info">Recurrente</span>
-                                <?php endif; ?>
-                                (S/ <?php echo number_format($concepto['monto_sugerido'], 2); ?>)
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                    <small class="text-muted">Los conceptos recurrentes calculan automáticamente el vencimiento</small>
+
+            <!-- NUEVA SECCIÓN: TIPO DE DEUDA -->
+            <div class="card mb-3" style="border: 2px solid #B91D22;">
+                <div class="card-header" style="background: linear-gradient(135deg, #B91D22, #8a1519); color: white;">
+                    <i class="fas fa-list-alt me-2"></i> Tipo de Deuda
                 </div>
-                
-                <div class="col-md-6 mb-3">
-                    <label class="form-label">Descripción Específica</label>
-                    <input type="text" name="descripcion_deuda" class="form-control" 
-                           placeholder="Ej: Cuota mensual octubre 2024">
-                    <small class="text-muted">Si se deja vacío, se usará el nombre del concepto</small>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label required">Seleccione el tipo de deuda</label>
+                            <div class="form-check mb-2">
+                                <input class="form-check-input" type="radio" name="tipo_deuda" id="tipoConcepto" value="concepto" checked>
+                                <label class="form-check-label" for="tipoConcepto">
+                                    <strong>Deuda con Concepto Predefinido</strong>
+                                    <br><small class="text-muted">Usar concepto de pago existente (cuota mensual, certificados, etc.)</small>
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="tipo_deuda" id="tipoManual" value="manual">
+                                <label class="form-check-label" for="tipoManual">
+                                    <strong>Deuda Manual Personalizada</strong>
+                                    <br><small class="text-muted">Para deudas antiguas, ajustes o casos especiales sin concepto predefinido</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            <!--SECCIÓN: CONCEPTO PREDEFINIDO -->            
+            <div id="seccionConcepto">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label required">Concepto de la Deuda</label>
+                        <select name="concepto_id" id="selectConcepto" class="form-select">
+                            <option value="">Seleccione un concepto...</option>
+                            <?php foreach ($conceptos as $concepto): ?>
+                                <option value="<?php echo $concepto['idConcepto']; ?>" 
+                                        data-monto="<?php echo $concepto['monto_sugerido']; ?>"
+                                        data-recurrente="<?php echo $concepto['es_recurrente'] ? '1' : '0'; ?>"
+                                        data-frecuencia="<?php echo e($concepto['frecuencia'] ?? ''); ?>"
+                                        data-dia-vencimiento="<?php echo $concepto['dia_vencimiento'] ?? ''; ?>">
+                                    <?php echo e($concepto['nombre_completo']); ?>
+                                    <?php if ($concepto['es_recurrente']): ?>
+                                        <span class="badge bg-info">Recurrente</span>
+                                    <?php endif; ?>
+                                    (S/ <?php echo number_format($concepto['monto_sugerido'], 2); ?>)
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Descripción Específica</label>
+                        <input type="text" name="descripcion_deuda_concepto" id="descripcionConcepto" class="form-control" 
+                               placeholder="Ej: Cuota mensual octubre 2024">
+                        <small class="text-muted">Si se deja vacío, se usará el nombre del concepto</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECCIÓN: DEUDA MANUAL -->
+            <div id="seccionManual" style="display: none;">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Deuda Manual:</strong> Use esta opción para deudas que no corresponden a un concepto predefinido (ej: deudas antiguas, ajustes especiales, etc.)
+                </div>
+
+                <div class="row">
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label required">Descripción de la Deuda Manual</label>
+                        <input type="text" name="concepto_manual" id="conceptoManual" class="form-control" 
+                               placeholder="Ej: Deuda pendiente años 2018-2020">
+                        <small class="text-muted">Describa brevemente el motivo de esta deuda</small>
+                    </div>
+
+                    <div class="col-md-12 mb-3">
+                        <label class="form-label">Descripción Detallada (Opcional)</label>
+                        <input type="text" name="descripcion_deuda_manual" id="descripcionManual" class="form-control" 
+                               placeholder="Detalles adicionales sobre esta deuda...">
+                    </div>
+                </div>
+
+                <input type="hidden" name="es_deuda_manual" id="esDeudaManual" value="0">
+            </div>
+
             
             <div class="row">
                 <div class="col-md-3 mb-3">

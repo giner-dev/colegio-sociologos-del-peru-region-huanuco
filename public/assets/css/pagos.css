@@ -148,3 +148,22 @@
         padding: 8px 12px;
     }
 }
+
+
+/* ===================================
+   BADGE PARA DEUDAS MANUALES
+   =================================== */
+.badge-manual-deuda {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    color: white;
+    padding: 4px 8px;
+    font-size: 0.75rem;
+    border-radius: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.badge-manual-deuda i {
+    font-size: 0.7rem;
+}

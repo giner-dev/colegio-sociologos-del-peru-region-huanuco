@@ -49,6 +49,7 @@ window.DeudasModule = (function() {
         initSelect2Deudas();
         initConceptoAutoFill();
         initConceptoRecurrenteLogic();
+        initTipoDeudaToggle();
         initFormValidation();
         initModalSeleccionColegiado();
     }
@@ -322,17 +323,71 @@ window.DeudasModule = (function() {
             });
         }
     }
+
+    // TOGGLE TIPO DE DEUDA
+    function initTipoDeudaToggle() {
+        const radioConcepto = document.getElementById('tipoConcepto');
+        const radioManual = document.getElementById('tipoManual');
+        const seccionConcepto = document.getElementById('seccionConcepto');
+        const seccionManual = document.getElementById('seccionManual');
+        const selectConcepto = document.getElementById('selectConcepto');
+        const conceptoManual = document.getElementById('conceptoManual');
+        const esDeudaManualInput = document.getElementById('esDeudaManual');
+
+        if (!radioConcepto || !radioManual) return;
+
+        function toggleSecciones() {
+            if (radioManual.checked) {
+                // Mostrar sección manual
+                seccionManual.style.display = 'block';
+                seccionConcepto.style.display = 'none';
+
+                // Requeridos
+                if (selectConcepto) selectConcepto.removeAttribute('required');
+                if (conceptoManual) conceptoManual.setAttribute('required', 'required');
+                if (esDeudaManualInput) esDeudaManualInput.value = '1';
+
+                console.log('✅ Modo: Deuda Manual');
+            } else {
+                // Mostrar sección concepto
+                seccionManual.style.display = 'none';
+                seccionConcepto.style.display = 'block';
+
+                // Requeridos
+                if (selectConcepto) selectConcepto.setAttribute('required', 'required');
+                if (conceptoManual) conceptoManual.removeAttribute('required');
+                if (esDeudaManualInput) esDeudaManualInput.value = '0';
+
+                console.log('✅ Modo: Deuda con Concepto');
+            }
+        }
+
+        radioConcepto.addEventListener('change', toggleSecciones);
+        radioManual.addEventListener('change', toggleSecciones);
+
+        // Inicializar
+        toggleSecciones();
+    }
     
     function validarFormularioDeuda(form) {
         const colegiado = form.querySelector('[name="colegiado_id"]').value;
-        const concepto = form.querySelector('[name="concepto_id"]').value;
+        const tipoDeuda = form.querySelector('input[name="tipo_deuda"]:checked').value;
         const monto = parseFloat(form.querySelector('[name="monto_esperado"]').value);
         const fecha = form.querySelector('[name="fecha_vencimiento"]').value;
         
         const errores = [];
         
         if (!colegiado) errores.push('Debe seleccionar un colegiado');
-        if (!concepto) errores.push('Debe seleccionar un concepto');
+        
+        // Validar según tipo de deuda
+        if (tipoDeuda === 'manual') {
+            const conceptoManual = form.querySelector('[name="concepto_manual"]').value;
+            if (!conceptoManual) errores.push('Debe ingresar una descripción para la deuda manual');
+        } else {
+            const concepto = form.querySelector('[name="concepto_id"]').value;
+            if (!concepto) errores.push('Debe seleccionar un concepto');
+        }
+        
         if (!monto || monto <= 0) errores.push('El monto debe ser mayor a 0');
         if (!fecha) errores.push('La fecha de vencimiento es obligatoria');
         

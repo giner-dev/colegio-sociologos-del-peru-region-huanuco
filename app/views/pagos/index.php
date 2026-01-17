@@ -141,7 +141,15 @@
                                 <td><?php echo formatDate($pago->fecha_pago); ?></td>
                                 <td><strong><?php echo e($pago->numero_colegiatura); ?></strong></td>
                                 <td><?php echo e($pago->getNombreColegiado()); ?></td>
-                                <td><?php echo e($pago->getConcepto()); ?></td>
+                                <td>
+                                    <?php if (!empty($pago->es_deuda_manual)): ?>
+                                        <span class="badge bg-secondary mb-1">
+                                            <i class="fas fa-edit"></i> Manual
+                                        </span>
+                                        <br>
+                                    <?php endif; ?>
+                                    <?php echo e($pago->getConcepto()); ?>
+                                </td>
                                 <td>
                                     <small class="text-muted">
                                         <?php echo e($pago->deuda_descripcion); ?>

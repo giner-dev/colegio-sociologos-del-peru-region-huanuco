@@ -43,7 +43,11 @@ class DeudaRepository {
                        cp.monto_sugerido,
                        cp.es_recurrente,
                        cp.frecuencia,
-                       cp.dia_vencimiento
+                       cp.dia_vencimiento,
+                       CASE 
+                           WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                           ELSE cp.nombre_completo
+                       END as concepto_mostrar
                 FROM deudas d
                 INNER JOIN colegiados c ON d.colegiado_id = c.idColegiados
                 LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
@@ -159,7 +163,11 @@ class DeudaRepository {
                        c.numero_colegiatura, c.dni,
                        cp.nombre_completo as concepto_nombre,
                        cp.descripcion as concepto_descripcion,
-                       cp.monto_sugerido
+                       cp.monto_sugerido,
+                       CASE 
+                           WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                           ELSE cp.nombre_completo
+                       END as concepto_mostrar
                 FROM deudas d
                 INNER JOIN colegiados c ON d.colegiado_id = c.idColegiados
                 LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
@@ -178,7 +186,11 @@ class DeudaRepository {
     public function findByColegiado($colegiadoId) {
         $sql = "SELECT d.*, 
                        cp.nombre_completo as concepto_nombre,
-                       cp.descripcion as concepto_descripcion
+                       cp.descripcion as concepto_descripcion,
+                       CASE 
+                           WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                           ELSE cp.nombre_completo
+                       END as concepto_mostrar
                 FROM deudas d
                 LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
                 WHERE d.colegiado_id = :id 
@@ -197,7 +209,11 @@ class DeudaRepository {
     // Obtiene deudas pendientes por colegiado
     public function findPendientesByColegiado($colegiadoId) {
         $sql = "SELECT d.*, 
-                       cp.nombre_completo as concepto_nombre
+                       cp.nombre_completo as concepto_nombre,
+                       CASE 
+                           WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                           ELSE cp.nombre_completo
+                       END as concepto_mostrar
                 FROM deudas d
                 LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
                 WHERE d.colegiado_id = :id 
@@ -229,7 +245,9 @@ class DeudaRepository {
     public function create($data) {
         $sql = "INSERT INTO deudas (
                     colegiado_id, 
-                    concepto_id, 
+                    concepto_id,
+                    concepto_manual,
+                    es_deuda_manual, 
                     descripcion_deuda, 
                     monto_esperado, 
                     fecha_generacion,
@@ -241,7 +259,9 @@ class DeudaRepository {
                     observaciones
                 ) VALUES (
                     :colegiado_id, 
-                    :concepto_id, 
+                    :concepto_id,
+                    :concepto_manual,
+                    :es_deuda_manual,
                     :descripcion_deuda, 
                     :monto_esperado, 
                     :fecha_generacion,
@@ -260,6 +280,8 @@ class DeudaRepository {
     public function update($id, $data) {
         $sql = "UPDATE deudas 
                 SET concepto_id = :concepto_id,
+                    concepto_manual = :concepto_manual,
+                    es_deuda_manual = :es_deuda_manual,
                     descripcion_deuda = :descripcion_deuda,
                     monto_esperado = :monto_esperado,
                     fecha_vencimiento = :fecha_vencimiento,
@@ -368,9 +390,14 @@ class DeudaRepository {
                     c.apellido_materno,
                     COUNT(d.idDeuda) as cantidad_deudas,
                     SUM(d.saldo_pendiente) as total_deuda,
-                    MAX(d.fecha_vencimiento) as ultimo_vencimiento
+                    MAX(d.fecha_vencimiento) as ultimo_vencimiento,
+                    MAX(CASE 
+                        WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                        ELSE cp.nombre_completo
+                    END) as concepto_mostrar
                 FROM colegiados c
                 INNER JOIN deudas d ON c.idColegiados = d.colegiado_id
+                LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto 
                 WHERE d.estado IN ('pendiente', 'vencido', 'parcial')
                 GROUP BY c.idColegiados
                 HAVING total_deuda > 0
@@ -437,7 +464,11 @@ class DeudaRepository {
         $sql = "SELECT d.*, 
                        c.nombres, c.apellido_paterno, c.apellido_materno,
                        c.numero_colegiatura, c.dni, c.telefono, c.correo,
-                       cp.nombre_completo as concepto_nombre
+                       cp.nombre_completo as concepto_nombre,
+                       CASE 
+                           WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                           ELSE cp.nombre_completo
+                       END as concepto_mostrar
                 FROM deudas d
                 INNER JOIN colegiados c ON d.colegiado_id = c.idColegiados
                 LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto

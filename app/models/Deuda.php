@@ -3,6 +3,8 @@ class Deuda{
     public $idDeuda;
     public $colegiado_id;
     public $concepto_id;
+    public $concepto_manual;
+    public $es_deuda_manual;
     public $descripcion_deuda;
     public $monto_esperado;
     public $monto_pagado;
@@ -158,6 +160,20 @@ class Deuda{
         ];
         
         return $estados[$this->estado] ?? 'Desconocido';
+    }
+
+    public function getNombreConcepto() {
+        if ($this->es_deuda_manual) {
+            return $this->concepto_manual ?? 'Deuda manual';
+        }
+        return $this->concepto_nombre ?? 'Sin concepto';
+    }
+
+    public function getDescripcionCompleta() {
+        if ($this->es_deuda_manual) {
+            return $this->descripcion_deuda ?? $this->concepto_manual ?? 'Deuda manual';
+        }
+        return $this->descripcion_deuda ?? $this->concepto_nombre ?? 'Sin descripción';
     }
     
     public function getOrigenTexto() {

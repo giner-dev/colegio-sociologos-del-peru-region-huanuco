@@ -56,6 +56,12 @@
                     <div class="col-md-6 mb-3">
                         <div class="info-label">Concepto Pagado</div>
                         <div class="info-value">
+                            <?php if (!empty($pago->es_deuda_manual)): ?>
+                                <span class="badge bg-secondary">
+                                    <i class="fas fa-edit"></i> Deuda Manual
+                                </span>
+                                <br>
+                            <?php endif; ?>
                             <?php echo e($pago->getConcepto()); ?>
                         </div>
                     </div>

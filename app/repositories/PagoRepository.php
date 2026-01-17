@@ -16,7 +16,11 @@ class PagoRepository {
                        c.nombres, c.apellido_paterno, c.apellido_materno, 
                        c.numero_colegiatura, c.dni,
                        d.descripcion_deuda as deuda_descripcion,
-                       cp.nombre_completo as deuda_concepto,
+                       CASE 
+                           WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                           ELSE cp.nombre_completo
+                       END as deuda_concepto,
+                       d.es_deuda_manual,
                        d.monto_esperado as deuda_monto_esperado,
                        mp.nombre as metodo_nombre,
                        ur.nombre_usuario as usuario_registro_nombre,
@@ -138,7 +142,11 @@ class PagoRepository {
                        c.nombres, c.apellido_paterno, c.apellido_materno, 
                        c.numero_colegiatura, c.dni,
                        d.descripcion_deuda as deuda_descripcion,
-                       cp.nombre_completo as deuda_concepto,
+                       CASE 
+                           WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                           ELSE cp.nombre_completo
+                       END as deuda_concepto,
+                       d.es_deuda_manual,
                        d.monto_esperado as deuda_monto_esperado,
                        mp.nombre as metodo_nombre,
                        ur.nombre_usuario as usuario_registro_nombre,
@@ -300,7 +308,10 @@ class PagoRepository {
     // Obtiene ingresos agrupados por concepto
     public function getIngresosPorConcepto($fechaInicio, $fechaFin) {
         $sql = "SELECT 
-                    cp.nombre_completo as concepto,
+                    CASE 
+                        WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                        ELSE cp.nombre_completo
+                    END as concepto,
                     COUNT(p.idPago) as cantidad,
                     SUM(p.monto) as total
                 FROM pagos p
@@ -308,7 +319,7 @@ class PagoRepository {
                 INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
                 WHERE p.fecha_pago BETWEEN :fecha_inicio AND :fecha_fin
                 AND p.estado = 'confirmado'
-                GROUP BY cp.idConcepto, cp.nombre_completo
+                GROUP BY concepto
                 ORDER BY total DESC";
         
         return $this->db->query($sql, [
@@ -339,7 +350,11 @@ class PagoRepository {
                        c.nombres, c.apellido_paterno, c.apellido_materno,
                        c.numero_colegiatura,
                        d.descripcion_deuda as deuda_descripcion,
-                       cp.nombre_completo as deuda_concepto,
+                       CASE 
+                           WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                           ELSE cp.nombre_completo
+                       END as deuda_concepto,
+                       d.es_deuda_manual,
                        mp.nombre as metodo_nombre
                 FROM pagos p
                 INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
@@ -497,18 +512,24 @@ class PagoRepository {
     }
 
     // Obtiene deudas pendientes de un colegiado
-    public function getDeudasPendientes($colegiadoId) {
+    public function getDeudasPendientes($colegiado_id) {
         $sql = "SELECT d.*, 
-                       cp.nombre_completo as concepto_nombre,
-                       cp.descripcion as concepto_descripcion
+                       CASE 
+                            WHEN d.es_deuda_manual = 1 THEN d.concepto_manual
+                            ELSE COALESCE(cp.nombre_completo, 'Concepto no definido')
+                       END as concepto_nombre,
+                       COALESCE(cp.descripcion, d.concepto_manual) as concepto_descripcion,
+                       d.monto_esperado,
+                       d.monto_pagado,
+                       d.saldo_pendiente
                 FROM deudas d
-                INNER JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
+                LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
                 WHERE d.colegiado_id = :colegiado_id
                 AND d.estado IN ('pendiente', 'vencido', 'parcial')
                 AND d.saldo_pendiente > 0
                 ORDER BY d.fecha_vencimiento ASC";
-        
-        return $this->db->query($sql, ['colegiado_id' => $colegiadoId]);
+
+        return $this->db->query($sql, ['colegiado_id' => $colegiado_id]);
     }
 
     // obtiene la ruta del comprobante de un pago

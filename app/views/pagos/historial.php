@@ -118,7 +118,15 @@
                         <?php foreach ($pagos as $pago): ?>
                             <tr>
                                 <td><?php echo formatDate($pago->fecha_pago); ?></td>
-                                <td><?php echo e($pago->getConcepto()); ?></td>
+                                <td>
+                                    <?php if (!empty($pago->es_deuda_manual)): ?>
+                                        <span class="badge bg-secondary mb-1">
+                                            <i class="fas fa-edit"></i> Manual
+                                        </span>
+                                        <br>
+                                    <?php endif; ?>
+                                    <?php echo e($pago->getConcepto()); ?>
+                                </td>
                                 <td><strong class="text-success"><?php echo formatMoney($pago->monto); ?></strong></td>
                                 <td>
                                     <span class="badge bg-info">
