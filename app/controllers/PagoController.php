@@ -102,7 +102,7 @@ class PagoController extends Controller {
         $this->requireAuth();
         $this->requirePermission('pagos', 'crear');
         $this->validateMethod('POST');
-        
+
         // Obtener datos del formulario
         $colegiadoId = $this->getPost('colegiado_id');
         $montoTotal = (float)$this->getPost('monto'); // Monto total ingresado
@@ -110,15 +110,15 @@ class PagoController extends Controller {
         $metodoPagoId = $this->getPost('metodo_pago_id');
         $numeroComprobante = $this->getPost('numero_comprobante');
         $observaciones = $this->getPost('observaciones');
-        
+
         // Verificar si es pago múltiple
         $esPagoMultiple = isset($_POST['es_pago_multiple']) && $_POST['es_pago_multiple'] === '1';
-        
+
         if ($esPagoMultiple) {
             // ============================================
             // CASO 1: PAGO MÚLTIPLE DE VARIAS DEUDAS
             // ============================================
-            
+
             // Obtener deudas IDs del POST
             $deudasIds = [];
             if (isset($_POST['deudas_ids']) && is_array($_POST['deudas_ids'])) {
@@ -128,16 +128,16 @@ class PagoController extends Controller {
                 $deudasIds = array_map('trim', $deudasIds);
                 $deudasIds = array_filter($deudasIds);
             }
-            
+
             if (empty($deudasIds)) {
                 $this->setError('Debe seleccionar al menos una deuda');
                 $this->redirect(url('pagos/registrar'));
                 return;
             }
-            
+
             // Verificar si es pago completo de conceptos definidos
             $pagoCompleto = isset($_POST['pago_completo']) && $_POST['pago_completo'] === '1';
-            
+
             // IMPORTANTE: Para conceptos definidos, necesitamos obtener los saldos de cada deuda
             // para dividir el pago correctamente
             if ($pagoCompleto) {
@@ -145,7 +145,7 @@ class PagoController extends Controller {
                 $deudaRepository = new DeudaRepository();
                 $saldosDeudas = [];
                 $saldoTotal = 0;
-                
+
                 foreach ($deudasIds as $deudaId) {
                     $deuda = $deudaRepository->findById((int)$deudaId);
                     if ($deuda) {
@@ -154,7 +154,7 @@ class PagoController extends Controller {
                         $saldoTotal += $saldo;
                     }
                 }
-                
+
                 // Verificar que el monto total coincida con la suma de saldos
                 if (abs($montoTotal - $saldoTotal) > 0.01) { // Margen de error de 1 céntimo
                     $this->setError('El monto total (S/ ' . number_format($montoTotal, 2) . 
@@ -164,7 +164,7 @@ class PagoController extends Controller {
                     return;
                 }
             }
-            
+
             // Procesar archivo si se subió
             $archivoComprobante = null;
             if (!empty($_FILES['archivo_comprobante']['name'])) {
@@ -177,19 +177,19 @@ class PagoController extends Controller {
                     return;
                 }
             }
-            
+
             // Preparar array con datos de cada pago
             $datosPagos = [];
-            
+
             foreach ($deudasIds as $index => $deudaId) {
                 // Calcular monto para esta deuda específica
                 $montoDeuda = $montoTotal; // Por defecto: todo el monto (para deudas manuales)
-                
+
                 if ($pagoCompleto) {
                     // Para conceptos definidos: usar el saldo específico de cada deuda
                     $montoDeuda = $saldosDeudas[$deudaId] ?? 0;
                 }
-                
+
                 $datosPago = [
                     'colegiado_id' => $colegiadoId,
                     'deuda_id' => (int)$deudaId,
@@ -202,38 +202,38 @@ class PagoController extends Controller {
                         " (Pago " . ($index + 1) . "/" . count($deudasIds) . " - S/ " . 
                         number_format($montoDeuda, 2) . ")" : "")
                 ];
-                
+
                 $datosPagos[] = $datosPago;
             }
-            
+
             // Llamar al método para registrar múltiples pagos
             $resultado = $this->pagoService->registrarPagosMultiples($datosPagos, authUserId());
-            
+
             if ($resultado['success']) {
                 $cantidadDeudas = count($deudasIds);
                 $mensaje = $pagoCompleto 
                     ? "Pago completo registrado correctamente para {$cantidadDeudas} concepto(s) definido(s)" 
                     : "Pago registrado correctamente para {$cantidadDeudas} deuda(s) manual(es)";
-                
+
                 $this->setSuccess($mensaje);
                 $this->redirect(url('pagos/ver/' . $resultado['primer_id']));
             } else {
                 $this->setError('Error: ' . implode(', ', $resultado['errors']));
                 $this->redirect(url('pagos/registrar'));
             }
-            
+
         } else {
             // ============================================
             // CASO 2: PAGO SIMPLE DE UNA SOLA DEUDA
             // ============================================
             $deudaId = $this->getPost('deuda_id');
-            
+
             if (empty($deudaId)) {
                 $this->setError('Debe seleccionar una deuda');
                 $this->redirect(url('pagos/registrar'));
                 return;
             }
-            
+
             $datos = [
                 'colegiado_id' => $colegiadoId,
                 'deuda_id' => $deudaId,
@@ -243,7 +243,7 @@ class PagoController extends Controller {
                 'numero_comprobante' => $numeroComprobante,
                 'observaciones' => $observaciones
             ];
-            
+
             // Procesar archivo si se subió
             if (!empty($_FILES['archivo_comprobante']['name'])) {
                 $resultadoArchivo = $this->pagoService->subirComprobante($_FILES['archivo_comprobante']);
@@ -255,9 +255,9 @@ class PagoController extends Controller {
                     return;
                 }
             }
-            
+
             $resultado = $this->pagoService->registrarPago($datos, authUserId());
-            
+
             if ($resultado['success']) {
                 $this->setSuccess('Pago registrado correctamente');
                 $this->redirect(url('pagos/ver/' . $resultado['id']));
@@ -669,28 +669,39 @@ class PagoController extends Controller {
     public function registrarAdelantado() {
         $this->requireAuth();
         $this->requirePermission('pagos', 'crear');
-        
+
         $opciones = $this->pagoService->obtenerOpcionesPago();
-        
+
         // PAGINACIÓN Y BÚSQUEDA
         $page = (int)($this->getQuery('page') ?? 1);
         $perPage = 10;
         $busqueda = $this->getQuery('busqueda', '');
-        
+
         $deudaRepo = new DeudaRepository();
         $colegiadosRepo = new ColegiadoRepository();
-        
+
         // Obtener IDs base de colegiados con programaciones activas
+        // QUITA el filtro 'c.estado = 'habilitado'' o cámbialo
         $sql = "SELECT DISTINCT p.colegiado_id 
                 FROM programacion_deudas p
+                INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
                 WHERE p.estado = 'activa'
-                AND (p.fecha_fin IS NULL OR p.fecha_fin >= CURDATE())";
-        
+                AND (
+                    p.fecha_fin IS NULL 
+                    OR p.fecha_fin = '0000-00-00' 
+                    OR p.fecha_fin >= CURDATE()
+                    OR p.proxima_generacion >= CURDATE()
+                )";
+                // QUITADO: AND c.estado = 'habilitado'
+
         $db = Database::getInstance();
         $results = $db->query($sql);
-        
+
         $idsConProgramacion = array_column($results, 'colegiado_id');
-        
+
+        // DEBUG: Ver qué IDs obtuvimos
+        error_log("IDs con programación encontrados: " . print_r($idsConProgramacion, true));
+
         if (empty($idsConProgramacion)) {
             $this->render('pagos/registrar_adelantado', [
                 'metodos' => $opciones['metodos'],
@@ -707,11 +718,10 @@ class PagoController extends Controller {
             ]);
             return;
         }
-        
-        // Construir filtros para búsqueda
+
+        // Construir filtros para búsqueda - QUITA el filtro de estado aquí también
         $filtros = [];
         if (!empty($busqueda)) {
-            // Determinar tipo de búsqueda
             if (is_numeric($busqueda)) {
                 if (strlen($busqueda) <= 5) {
                     $filtros['numero_colegiatura'] = $busqueda;
@@ -724,19 +734,28 @@ class PagoController extends Controller {
                 $filtros['nombres'] = $busqueda;
             }
         }
-        
+
+        // QUITA el filtro de estado del método buscarPaginated
+        // O modifica el método para no filtrar por estado
+
         // Obtener colegiados filtrados y paginados
         $resultado = $colegiadosRepo->buscarPaginated($filtros, $page, $perPage);
-        
+
         // Filtrar solo los que tienen programaciones activas
         $colegiadosFiltrados = array_filter($resultado['data'], function($col) use ($idsConProgramacion) {
             return in_array($col->idColegiados, $idsConProgramacion);
         });
-        
+
+        // DEBUG: Ver qué colegiados se filtraron
+        error_log("Colegiados después de filtrar por programación: " . count($colegiadosFiltrados));
+        foreach ($colegiadosFiltrados as $col) {
+            error_log("  - ID: {$col->idColegiados}, Nombre: {$col->nombres} {$col->apellido_paterno}, Estado: {$col->estado}");
+        }
+
         // Recalcular totales después del filtro
         $totalFiltrados = count($colegiadosFiltrados);
         $totalPages = ceil($totalFiltrados / $perPage);
-        
+
         $this->render('pagos/registrar_adelantado', [
             'metodos' => $opciones['metodos'],
             'colegiados' => array_values($colegiadosFiltrados),
