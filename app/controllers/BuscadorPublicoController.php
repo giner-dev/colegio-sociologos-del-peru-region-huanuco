@@ -27,11 +27,9 @@ class BuscadorPublicoController extends Controller {
             return;
         }
 
-        // Obtener parámetros de búsqueda
         $dni = $this->getQuery('dni');
         $numeroColegiatura = $this->getQuery('numero_colegiatura');
 
-        // Validar que al menos uno esté presente
         if (empty($dni) && empty($numeroColegiatura)) {
             $this->json([
                 'success' => false,
@@ -40,13 +38,10 @@ class BuscadorPublicoController extends Controller {
             return;
         }
 
-        // Buscar colegiado
         try {
             $colegiado = null;
 
-            // Buscar por DNI si está presente
             if (!empty($dni)) {
-                // Validar formato DNI
                 if (strlen($dni) !== 8 || !ctype_digit($dni)) {
                     $this->json([
                         'success' => false,
@@ -57,17 +52,13 @@ class BuscadorPublicoController extends Controller {
 
                 $colegiado = $this->colegiadoRepository->findByDni($dni);
             }
-            // Buscar por número de colegiatura si DNI no está presente
             else if (!empty($numeroColegiatura)) {
-                // Limpiar ceros a la izquierda y convertir a número puro
                 $numeroLimpio = ltrim($numeroColegiatura, '0');
 
-                // Si quedó vacío después de quitar ceros, es "0"
                 if (empty($numeroLimpio)) {
                     $numeroLimpio = '0';
                 }
 
-                // Validar que sea numérico
                 if (!ctype_digit($numeroLimpio)) {
                     $this->json([
                         'success' => false,
@@ -89,7 +80,15 @@ class BuscadorPublicoController extends Controller {
                 return;
             }
 
-            // Preparar respuesta con datos públicos únicamente
+            // MODIFICACIÓN: Determinar texto de estado según el nuevo campo
+            $estadoTexto = 'NO HABILITADO';
+            if ($colegiado->estado === 'habilitado') {
+                $estadoTexto = 'HABILITADO';
+            } elseif ($colegiado->estado === 'inactivo_cese') {
+                $estadoTexto = 'INACTIVO POR CESE';
+            }
+
+            // Preparar respuesta con datos públicos
             $response = [
                 'success' => true,
                 'found' => true,
@@ -100,8 +99,9 @@ class BuscadorPublicoController extends Controller {
                     'apellido_materno' => $colegiado->apellido_materno,
                     'nombre_completo' => $colegiado->getNombreCompleto(),
                     'estado' => $colegiado->estado,
-                    'estado_texto' => $colegiado->estado === 'habilitado' ? 'HABILITADO' : 'NO HABILITADO',
-                    'fecha_colegiatura' => formatDate($colegiado->fecha_colegiatura)
+                    'estado_texto' => $estadoTexto,
+                    'fecha_colegiatura' => formatDate($colegiado->fecha_colegiatura),
+                    'fecha_cese' => $colegiado->fecha_cese ? formatDate($colegiado->fecha_cese) : null
                 ]
             ];
 

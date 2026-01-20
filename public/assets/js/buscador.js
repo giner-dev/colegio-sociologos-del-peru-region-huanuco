@@ -173,22 +173,27 @@ function mostrarResultadoEncontrado(colegiado) {
     const resultContent = document.getElementById('resultContent');
     const resultHeader = resultCard.querySelector('.result-header');
     
-    // Remover clase not-found si existe
     resultHeader.classList.remove('not-found');
     
-    // Restaurar header original
     const headerIcon = resultHeader.querySelector('i');
     const headerTitle = resultHeader.querySelector('h3');
     headerIcon.className = 'fas fa-user-check';
     headerTitle.textContent = 'Resultado de la Búsqueda';
     
-    // Determinar icono y clase de estado
-    const esHabilitado = colegiado.estado === 'habilitado';
-    const iconoEstado = esHabilitado ? 'fa-check-circle' : 'fa-times-circle';
-    const claseEstado = esHabilitado ? 'habilitado' : 'inhabilitado';
+    // MODIFICACIÓN: Determinar icono y clase según el estado
+    let iconoEstado = 'fa-times-circle';
+    let claseEstado = 'inhabilitado';
+    
+    if (colegiado.estado === 'habilitado') {
+        iconoEstado = 'fa-check-circle';
+        claseEstado = 'habilitado';
+    } else if (colegiado.estado === 'inactivo_cese') {
+        iconoEstado = 'fa-user-slash';
+        claseEstado = 'inactivo-cese';
+    }
     
     // Construir HTML del resultado
-    resultContent.innerHTML = `
+    let htmlResultado = `
         <div class="result-item">
             <div class="result-label">
                 <i class="fas fa-id-card"></i>
@@ -212,7 +217,23 @@ function mostrarResultadoEncontrado(colegiado) {
             </div>
             <div class="result-value">${escapeHtml(colegiado.fecha_colegiatura)}</div>
         </div>
-        
+    `;
+    
+    // Si existe fecha de cese, mostrarla
+    if (colegiado.fecha_cese) {
+        htmlResultado += `
+        <div class="result-item">
+            <div class="result-label">
+                <i class="fas fa-calendar-times"></i>
+                Fecha de Cese
+            </div>
+            <div class="result-value">${escapeHtml(colegiado.fecha_cese)}</div>
+        </div>
+        `;
+    }
+    
+    // Estado del colegiado
+    htmlResultado += `
         <div class="result-item" style="text-align: center; background: transparent; margin-top: 10px;">
             <div class="result-label" style="justify-content: center; margin-bottom: 10px;">
                 <i class="fas fa-info-circle"></i>
@@ -225,10 +246,10 @@ function mostrarResultadoEncontrado(colegiado) {
         </div>
     `;
     
-    // Mostrar card con animación
+    resultContent.innerHTML = htmlResultado;
+    
     resultCard.style.display = 'block';
     
-    // Scroll suave hacia el resultado
     setTimeout(() => {
         resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 100);
