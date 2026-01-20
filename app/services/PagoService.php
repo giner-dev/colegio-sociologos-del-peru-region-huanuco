@@ -717,4 +717,120 @@ class PagoService {
                 
         return $errores;
     }
+
+    public function obtenerColegiadosConDeudasPaginado($filtros = [], $pagina = 1, $porPagina = 10) {
+        return $this->pagoRepository->getColegiadosConDeudasPaginado($filtros, $pagina, $porPagina);
+    }
+
+    // Registra múltiples pagos en una sola transacción
+    public function registrarPagosMultiples($datosPagos, $usuarioId) {
+        $db = Database::getInstance();
+        $db->beginTransaction();
+                
+        try {
+            $idsPagos = [];
+            $totalRegistrados = 0;
+                
+            foreach ($datosPagos as $index => $datos) {
+                // Validar datos básicos
+                $errores = $this->validarDatos($datos);
+                if (!empty($errores)) {
+                    throw new Exception("Error en pago {$index}: " . implode(', ', $errores));
+                }
+                
+                // Verificar que la deuda existe
+                $deuda = $this->deudaRepository->findById($datos['deuda_id']);
+                if (!$deuda) {
+                    throw new Exception("Deuda ID {$datos['deuda_id']} no encontrada");
+                }
+                
+                // Verificar que el colegiado coincide
+                if ($deuda->colegiado_id != $datos['colegiado_id']) {
+                    throw new Exception("La deuda ID {$datos['deuda_id']} no pertenece al colegiado seleccionado");
+                }
+                
+                // Verificar que la deuda esté pendiente
+                if ($deuda->isPagada() || $deuda->isCancelada()) {
+                    throw new Exception("La deuda ID {$datos['deuda_id']} ya está pagada o cancelada");
+                }
+                
+                // Verificar que el monto no exceda el saldo pendiente
+                $saldoPendiente = $deuda->getSaldoPendiente();
+                if ($datos['monto'] > $saldoPendiente) {
+                    throw new Exception("El monto excede el saldo pendiente de la deuda ID {$datos['deuda_id']} (S/ " . number_format($saldoPendiente, 2) . ")");
+                }
+                
+                // Registrar el pago
+                $datosInsert = [
+                    'colegiado_id' => $datos['colegiado_id'],
+                    'deuda_id' => $datos['deuda_id'],
+                    'monto' => $datos['monto'],
+                    'fecha_pago' => $datos['fecha_pago'],
+                    'metodo_pago_id' => $datos['metodo_pago_id'],
+                    'numero_comprobante' => $datos['numero_comprobante'] ?? null,
+                    'archivo_comprobante' => $datos['archivo_comprobante'] ?? null,
+                    'estado' => 'registrado',
+                    'observaciones' => $datos['observaciones'] ?? null,
+                    'usuario_registro_id' => $usuarioId,
+                    'es_pago_adelantado' => false,
+                    'periodo_adelantado' => null
+                ];
+                
+                $pagoId = $this->pagoRepository->create($datosInsert);
+                
+                if (!$pagoId) {
+                    throw new Exception("Error al registrar el pago para deuda ID {$datos['deuda_id']}");
+                }
+                
+                $idsPagos[] = $pagoId;
+                $totalRegistrados++;
+                
+                // Crear detalle de aplicación del pago
+                $detalleData = [
+                    'pago_id' => $pagoId,
+                    'deuda_id' => $datos['deuda_id'],
+                    'monto_aplicado' => $datos['monto'],
+                    'usuario_aplicacion_id' => $usuarioId
+                ];
+                
+                $detalleId = $this->pagoRepository->crearDetalleAplicacion($detalleData);
+                
+                if (!$detalleId) {
+                    throw new Exception("Error al crear el detalle de aplicación para pago ID {$pagoId}");
+                }
+                
+                // Actualizar la deuda
+                $nuevoMontoPagado = ($deuda->monto_pagado ?? 0) + $datos['monto'];
+                $this->deudaRepository->actualizarMontoPagado($datos['deuda_id'], $nuevoMontoPagado);
+                
+                // Si el pago cubre completamente la deuda, confirmar automáticamente
+                if ($nuevoMontoPagado >= $deuda->monto_esperado) {
+                    $this->pagoRepository->confirmar($pagoId, $usuarioId);
+                }
+                
+                logMessage("Pago múltiple registrado: ID {$pagoId} - Deuda: {$datos['deuda_id']} - Monto: {$datos['monto']}", 'info');
+            }
+                
+            // Actualizar estado del colegiado
+            $this->actualizarEstadoColegiado($datosPagos[0]['colegiado_id']);
+                
+            $db->commit();
+                
+            logMessage("✅ Pago múltiple completado: {$totalRegistrados} pagos registrados - IDs: " . implode(', ', $idsPagos), 'info');
+            return [
+                'success' => true, 
+                'ids' => $idsPagos, 
+                'primer_id' => $idsPagos[0],
+                'total' => $totalRegistrados
+            ];
+                
+        } catch (Exception $e) {
+            $db->rollback();
+            logMessage("❌ Error al registrar pagos múltiples: " . $e->getMessage(), 'error');
+            return [
+                'success' => false, 
+                'errors' => ['Error interno: ' . $e->getMessage()]
+            ];
+        }
+    }
 }

@@ -524,13 +524,14 @@ class PagoRepository {
                        COALESCE(cp.descripcion, d.concepto_manual) as concepto_descripcion,
                        d.monto_esperado,
                        d.monto_pagado,
-                       d.saldo_pendiente
+                       d.saldo_pendiente,
+                       d.es_deuda_manual
                 FROM deudas d
                 LEFT JOIN conceptos_pago cp ON d.concepto_id = cp.idConcepto
                 WHERE d.colegiado_id = :colegiado_id
                 AND d.estado IN ('pendiente', 'vencido', 'parcial')
                 AND d.saldo_pendiente > 0
-                ORDER BY d.fecha_vencimiento ASC";
+                ORDER BY d.fecha_vencimiento ASC, d.fecha_generacion ASC";
 
         return $this->db->query($sql, ['colegiado_id' => $colegiado_id]);
     }
@@ -624,6 +625,74 @@ class PagoRepository {
         
         return [
             'data' => $colegiados,
+            'total' => $total,
+            'pagina' => $pagina,
+            'porPagina' => $porPagina,
+            'totalPaginas' => ceil($total / $porPagina)
+        ];
+    }
+
+    public function getColegiadosConDeudasPaginado($filtros = [], $pagina = 1, $porPagina = 10) {
+        $offset = ($pagina - 1) * $porPagina;
+        
+        $where = "WHERE 1=1";
+        $params = [];
+        
+        if (!empty($filtros['busqueda'])) {
+            $busqueda = $filtros['busqueda'];
+            $where .= " AND (
+                c.numero_colegiatura LIKE :busqueda1 OR 
+                c.dni LIKE :busqueda2 OR 
+                c.nombres LIKE :busqueda3 OR 
+                c.apellido_paterno LIKE :busqueda4 OR 
+                c.apellido_materno LIKE :busqueda5 OR
+                CONCAT(c.apellido_paterno, ' ', c.apellido_materno, ', ', c.nombres) LIKE :busqueda6
+            )";
+            $params['busqueda1'] = '%' . $busqueda . '%';
+            $params['busqueda2'] = '%' . $busqueda . '%';
+            $params['busqueda3'] = '%' . $busqueda . '%';
+            $params['busqueda4'] = '%' . $busqueda . '%';
+            $params['busqueda5'] = '%' . $busqueda . '%';
+            $params['busqueda6'] = '%' . $busqueda . '%';
+        }
+        
+        // Contar total de colegiados con deudas
+        $sqlCount = "SELECT COUNT(DISTINCT c.idColegiados) as total
+                     FROM colegiados c
+                     INNER JOIN deudas d ON c.idColegiados = d.colegiado_id
+                     $where
+                     AND d.estado IN ('pendiente', 'vencido', 'parcial')
+                     AND d.saldo_pendiente > 0";
+        
+        $resultCount = $this->db->queryOne($sqlCount, $params);
+        $total = $resultCount['total'];
+        
+        // Obtener colegiados paginados
+        $sql = "SELECT 
+                    c.idColegiados,
+                    c.numero_colegiatura,
+                    c.dni,
+                    c.nombres,
+                    c.apellido_paterno,
+                    c.apellido_materno,
+                    COUNT(DISTINCT d.idDeuda) as cantidad_deudas,
+                    SUM(d.saldo_pendiente) as total_deuda
+                FROM colegiados c
+                INNER JOIN deudas d ON c.idColegiados = d.colegiado_id
+                $where
+                AND d.estado IN ('pendiente', 'vencido', 'parcial')
+                AND d.saldo_pendiente > 0
+                GROUP BY c.idColegiados
+                ORDER BY c.apellido_paterno ASC, c.apellido_materno ASC
+                LIMIT :limit OFFSET :offset";
+        
+        $params['limit'] = $porPagina;
+        $params['offset'] = $offset;
+        
+        $results = $this->db->query($sql, $params);
+        
+        return [
+            'colegiados' => $results,
             'total' => $total,
             'pagina' => $pagina,
             'porPagina' => $porPagina,

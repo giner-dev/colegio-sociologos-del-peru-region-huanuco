@@ -48,24 +48,6 @@ class PagoController extends Controller {
         ]);
     }
 
-    // Obtiene colegiados CON deudas pendientes
-    private function obtenerColegiadosConDeudas() {
-        $this->requirePermission('pagos', 'ver');
-        $colegiadoRepo = new ColegiadoRepository();
-        $deudaRepo = new DeudaRepository();
-        
-        $todosColegiados = $colegiadoRepo->findAll();
-        
-        $colegiadosConDeudas = [];
-        foreach ($todosColegiados as $colegiado) {
-            if ($deudaRepo->tieneDeudasPendientes($colegiado->idColegiados)) {
-                $colegiadosConDeudas[] = $colegiado;
-            }
-        }
-        
-        return $colegiadosConDeudas;
-    }
-
     // Muestra formulario para registrar pago
     public function registrar() {
         $this->requireAuth();
@@ -73,43 +55,39 @@ class PagoController extends Controller {
         
         $opciones = $this->pagoService->obtenerOpcionesPago();
         
-        // Obtener colegiados con deudas pendientes
-        $deudaRepo = new DeudaRepository();
-        $colegiadosRepo = new ColegiadoRepository();
+        $page = (int)($this->getQuery('page') ?? 1);
+        $busqueda = $this->getQuery('busqueda', '');
+        $perPage = 10;
         
-        // Obtener IDs de colegiados con deudas
-        $sql = "SELECT DISTINCT colegiado_id 
-                FROM deudas 
-                WHERE estado IN ('pendiente', 'vencido', 'parcial')
-                AND saldo_pendiente > 0";
-
-        $db = Database::getInstance();
-        $results = $db->query($sql);
-        
-        $colegiados = [];
-        foreach ($results as $row) {
-            $colegiado = $colegiadosRepo->findById($row['colegiado_id']);
-            if ($colegiado) {
-                $colegiados[] = $colegiado;
-            }
+        $filtros = [];
+        if (!empty($busqueda)) {
+            $filtros['busqueda'] = $busqueda;
         }
-
-        // Resto del código permanece igual...
+        
+        $resultado = $this->pagoService->obtenerColegiadosConDeudasPaginado($filtros, $page, $perPage);
+        
         $deudaId = $this->getQuery('deuda_id');
         $colegiadoId = $this->getQuery('colegiado_id');
-
+    
         $deudasPendientes = [];
         $colegiadoSeleccionado = null;
-
+    
         if ($colegiadoId) {
             $deudasPendientes = $this->pagoService->obtenerDeudasPendientes($colegiadoId);
             $colegiadoRepo = new ColegiadoRepository();
             $colegiadoSeleccionado = $colegiadoRepo->findById($colegiadoId);
         }
-
+    
         $this->render('pagos/registrar', [
             'metodos' => $opciones['metodos'],
-            'colegiados' => $colegiados,
+            'colegiados' => $resultado['colegiados'],
+            'pagination' => [
+                'total' => $resultado['total'],
+                'page' => $resultado['pagina'],
+                'perPage' => $resultado['porPagina'],
+                'totalPages' => $resultado['totalPaginas']
+            ],
+            'busqueda' => $busqueda,
             'deudasPendientes' => $deudasPendientes,
             'colegiadoSeleccionado' => $colegiadoSeleccionado,
             'deudaId' => $deudaId,
@@ -125,38 +103,171 @@ class PagoController extends Controller {
         $this->requirePermission('pagos', 'crear');
         $this->validateMethod('POST');
         
-        $datos = [
-            'colegiado_id' => $this->getPost('colegiado_id'),
-            'deuda_id' => $this->getPost('deuda_id'),
-            'monto' => $this->getPost('monto'),
-            'fecha_pago' => $this->getPost('fecha_pago'),
-            'metodo_pago_id' => $this->getPost('metodo_pago_id'),
-            'numero_comprobante' => $this->getPost('numero_comprobante'),
-            'observaciones' => $this->getPost('observaciones')
-        ];
+        // Obtener datos del formulario
+        $colegiadoId = $this->getPost('colegiado_id');
+        $montoTotal = (float)$this->getPost('monto'); // Monto total ingresado
+        $fechaPago = $this->getPost('fecha_pago');
+        $metodoPagoId = $this->getPost('metodo_pago_id');
+        $numeroComprobante = $this->getPost('numero_comprobante');
+        $observaciones = $this->getPost('observaciones');
         
-        // Procesar archivo si se subió
-        if (!empty($_FILES['archivo_comprobante']['name'])) {
-            $resultadoArchivo = $this->pagoService->subirComprobante($_FILES['archivo_comprobante']);
-            if ($resultadoArchivo['success']) {
-                $datos['archivo_comprobante'] = $resultadoArchivo['ruta'];
-            } else {
-                $this->setError($resultadoArchivo['message']);
+        // Verificar si es pago múltiple
+        $esPagoMultiple = isset($_POST['es_pago_multiple']) && $_POST['es_pago_multiple'] === '1';
+        
+        if ($esPagoMultiple) {
+            // ============================================
+            // CASO 1: PAGO MÚLTIPLE DE VARIAS DEUDAS
+            // ============================================
+            
+            // Obtener deudas IDs del POST
+            $deudasIds = [];
+            if (isset($_POST['deudas_ids']) && is_array($_POST['deudas_ids'])) {
+                $deudasIds = $_POST['deudas_ids'];
+            } elseif (isset($_POST['deudas_ids']) && is_string($_POST['deudas_ids'])) {
+                $deudasIds = explode(',', $_POST['deudas_ids']);
+                $deudasIds = array_map('trim', $deudasIds);
+                $deudasIds = array_filter($deudasIds);
+            }
+            
+            if (empty($deudasIds)) {
+                $this->setError('Debe seleccionar al menos una deuda');
                 $this->redirect(url('pagos/registrar'));
                 return;
             }
-        }
-        
-        $resultado = $this->pagoService->registrarPago($datos, authUserId());
-        
-        if ($resultado['success']) {
-            $this->setSuccess('Pago registrado correctamente');
-            $this->redirect(url('pagos/ver/' . $resultado['id']));
+            
+            // Verificar si es pago completo de conceptos definidos
+            $pagoCompleto = isset($_POST['pago_completo']) && $_POST['pago_completo'] === '1';
+            
+            // IMPORTANTE: Para conceptos definidos, necesitamos obtener los saldos de cada deuda
+            // para dividir el pago correctamente
+            if ($pagoCompleto) {
+                // Obtener información de las deudas para calcular distribución
+                $deudaRepository = new DeudaRepository();
+                $saldosDeudas = [];
+                $saldoTotal = 0;
+                
+                foreach ($deudasIds as $deudaId) {
+                    $deuda = $deudaRepository->findById((int)$deudaId);
+                    if ($deuda) {
+                        $saldo = (float)($deuda->saldo_pendiente ?? $deuda->monto_esperado - $deuda->monto_pagado);
+                        $saldosDeudas[$deudaId] = $saldo;
+                        $saldoTotal += $saldo;
+                    }
+                }
+                
+                // Verificar que el monto total coincida con la suma de saldos
+                if (abs($montoTotal - $saldoTotal) > 0.01) { // Margen de error de 1 céntimo
+                    $this->setError('El monto total (S/ ' . number_format($montoTotal, 2) . 
+                                  ') debe coincidir con la suma de los saldos (S/ ' . 
+                                  number_format($saldoTotal, 2) . ')');
+                    $this->redirect(url('pagos/registrar'));
+                    return;
+                }
+            }
+            
+            // Procesar archivo si se subió
+            $archivoComprobante = null;
+            if (!empty($_FILES['archivo_comprobante']['name'])) {
+                $resultadoArchivo = $this->pagoService->subirComprobante($_FILES['archivo_comprobante']);
+                if ($resultadoArchivo['success']) {
+                    $archivoComprobante = $resultadoArchivo['ruta'];
+                } else {
+                    $this->setError($resultadoArchivo['message']);
+                    $this->redirect(url('pagos/registrar'));
+                    return;
+                }
+            }
+            
+            // Preparar array con datos de cada pago
+            $datosPagos = [];
+            
+            foreach ($deudasIds as $index => $deudaId) {
+                // Calcular monto para esta deuda específica
+                $montoDeuda = $montoTotal; // Por defecto: todo el monto (para deudas manuales)
+                
+                if ($pagoCompleto) {
+                    // Para conceptos definidos: usar el saldo específico de cada deuda
+                    $montoDeuda = $saldosDeudas[$deudaId] ?? 0;
+                }
+                
+                $datosPago = [
+                    'colegiado_id' => $colegiadoId,
+                    'deuda_id' => (int)$deudaId,
+                    'monto' => (float)$montoDeuda,
+                    'fecha_pago' => $fechaPago,
+                    'metodo_pago_id' => $metodoPagoId,
+                    'numero_comprobante' => $numeroComprobante,
+                    'archivo_comprobante' => ($index === 0) ? $archivoComprobante : null,
+                    'observaciones' => $observaciones . (count($deudasIds) > 1 ? 
+                        " (Pago " . ($index + 1) . "/" . count($deudasIds) . " - S/ " . 
+                        number_format($montoDeuda, 2) . ")" : "")
+                ];
+                
+                $datosPagos[] = $datosPago;
+            }
+            
+            // Llamar al método para registrar múltiples pagos
+            $resultado = $this->pagoService->registrarPagosMultiples($datosPagos, authUserId());
+            
+            if ($resultado['success']) {
+                $cantidadDeudas = count($deudasIds);
+                $mensaje = $pagoCompleto 
+                    ? "Pago completo registrado correctamente para {$cantidadDeudas} concepto(s) definido(s)" 
+                    : "Pago registrado correctamente para {$cantidadDeudas} deuda(s) manual(es)";
+                
+                $this->setSuccess($mensaje);
+                $this->redirect(url('pagos/ver/' . $resultado['primer_id']));
+            } else {
+                $this->setError('Error: ' . implode(', ', $resultado['errors']));
+                $this->redirect(url('pagos/registrar'));
+            }
+            
         } else {
-            $this->setError('Error: ' . implode(', ', $resultado['errors']));
-            $this->redirect(url('pagos/registrar'));
+            // ============================================
+            // CASO 2: PAGO SIMPLE DE UNA SOLA DEUDA
+            // ============================================
+            $deudaId = $this->getPost('deuda_id');
+            
+            if (empty($deudaId)) {
+                $this->setError('Debe seleccionar una deuda');
+                $this->redirect(url('pagos/registrar'));
+                return;
+            }
+            
+            $datos = [
+                'colegiado_id' => $colegiadoId,
+                'deuda_id' => $deudaId,
+                'monto' => $montoTotal,
+                'fecha_pago' => $fechaPago,
+                'metodo_pago_id' => $metodoPagoId,
+                'numero_comprobante' => $numeroComprobante,
+                'observaciones' => $observaciones
+            ];
+            
+            // Procesar archivo si se subió
+            if (!empty($_FILES['archivo_comprobante']['name'])) {
+                $resultadoArchivo = $this->pagoService->subirComprobante($_FILES['archivo_comprobante']);
+                if ($resultadoArchivo['success']) {
+                    $datos['archivo_comprobante'] = $resultadoArchivo['ruta'];
+                } else {
+                    $this->setError($resultadoArchivo['message']);
+                    $this->redirect(url('pagos/registrar'));
+                    return;
+                }
+            }
+            
+            $resultado = $this->pagoService->registrarPago($datos, authUserId());
+            
+            if ($resultado['success']) {
+                $this->setSuccess('Pago registrado correctamente');
+                $this->redirect(url('pagos/ver/' . $resultado['id']));
+            } else {
+                $this->setError('Error: ' . implode(', ', $resultado['errors']));
+                $this->redirect(url('pagos/registrar'));
+            }
         }
     }
+
 
     // Muestra detalles de un pago
     public function ver($id) {

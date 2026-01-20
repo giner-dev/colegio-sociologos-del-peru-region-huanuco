@@ -10,32 +10,42 @@
 <div class="card mb-4" id="paso1">
     <div class="card-header bg-primary text-white">
         <h5 class="mb-0">
-            <span class="badge bg-light text-primary me-2">1</span>
+            <span class="badge">1</span>
             Seleccionar Colegiado con Deudas
         </h5>
     </div>
     <div class="card-body">
         <!-- Buscador -->
-        <div class="row mb-3">
-            <div class="col-md-8">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="fas fa-search"></i></span>
-                    <input type="text" id="searchColegiado" class="form-control" 
-                           placeholder="Buscar por N° Colegiatura, DNI o Nombre...">
+        <form method="GET" action="<?php echo url('pagos/registrar'); ?>" class="mb-3">
+            <div class="row">
+                <div class="col-md-10">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" name="busqueda" class="form-control" 
+                               value="<?php echo e($busqueda ?? ''); ?>"
+                               placeholder="Buscar por N° Colegiatura, DNI o Nombre...">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search me-1"></i> Buscar
+                        </button>
+                        <?php if (!empty($busqueda)): ?>
+                            <a href="<?php echo url('pagos/registrar'); ?>" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Limpiar
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+                <div class="col-md-2 text-end">
+                    <span class="badge bg-info fs-6">
+                        <i class="fas fa-users me-1"></i>
+                        <?php echo $pagination['total']; ?> colegiados
+                    </span>
                 </div>
             </div>
-            <div class="col-md-4 text-end">
-                <span class="badge bg-info fs-6">
-                    <i class="fas fa-users me-1"></i>
-                    <span id="totalColegiadosConDeudas"><?php echo count($colegiados); ?></span> 
-                    colegiados con deudas
-                </span>
-            </div>
-        </div>
+        </form>
 
         <!-- Tabla de Colegiados -->
         <div class="table-responsive">
-            <table class="table table-hover" id="tablaColegiadosConDeudas">
+            <table class="table table-hover">
                 <thead class="table-dark">
                     <tr>
                         <th width="10%">N° Colegiatura</th>
@@ -51,35 +61,31 @@
                         <tr>
                             <td colspan="6" class="text-center text-muted py-4">
                                 <i class="fas fa-info-circle me-2"></i>
-                                No hay colegiados con deudas pendientes
+                                No se encontraron colegiados con deudas pendientes
                             </td>
                         </tr>
                     <?php else: ?>
-                        <?php foreach ($colegiados as $colegiado): ?>
-                            <tr class="colegiado-row" 
-                                data-colegiado-id="<?php echo $colegiado->idColegiados; ?>"
-                                data-numero="<?php echo strtolower($colegiado->numero_colegiatura); ?>"
-                                data-dni="<?php echo $colegiado->dni; ?>"
-                                data-nombre="<?php echo strtolower($colegiado->getNombreCompleto()); ?>">
-                                <td><strong><?php echo e($colegiado->numero_colegiatura); ?></strong></td>
-                                <td><?php echo e($colegiado->dni); ?></td>
-                                <td><?php echo e($colegiado->getNombreCompleto()); ?></td>
+                        <?php foreach ($colegiados as $col): ?>
+                            <tr>
+                                <td><strong><?php echo formatNumeroColegiatura($col['numero_colegiatura']); ?></strong></td>
+                                <td><?php echo e($col['dni']); ?></td>
+                                <td><?php echo e($col['apellido_paterno'] . ' ' . $col['apellido_materno'] . ', ' . $col['nombres']); ?></td>
                                 <td class="text-center">
-                                    <span class="badge bg-warning text-dark" id="count-deudas-<?php echo $colegiado->idColegiados; ?>">
-                                        <i class="fas fa-spinner fa-spin"></i>
+                                    <span class="badge bg-warning text-dark">
+                                        <?php echo $col['cantidad_deudas']; ?> deuda(s)
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    <span class="text-danger fw-bold" id="monto-total-<?php echo $colegiado->idColegiados; ?>">
-                                        <i class="fas fa-spinner fa-spin"></i>
+                                    <span class="text-danger fw-bold">
+                                        <?php echo formatMoney($col['total_deuda']); ?>
                                     </span>
                                 </td>
                                 <td class="text-center">
                                     <button type="button" 
                                             class="btn btn-sm btn-primary btn-seleccionar-colegiado" 
-                                            data-colegiado-id="<?php echo $colegiado->idColegiados; ?>"
-                                            data-nombre="<?php echo e($colegiado->getNombreCompleto()); ?>"
-                                            data-numero="<?php echo e($colegiado->numero_colegiatura); ?>">
+                                            data-colegiado-id="<?php echo $col['idColegiados']; ?>"
+                                            data-nombre="<?php echo e($col['apellido_paterno'] . ' ' . $col['apellido_materno'] . ', ' . $col['nombres']); ?>"
+                                            data-numero="<?php echo formatNumeroColegiatura($col['numero_colegiatura']); ?>">
                                         <i class="fas fa-hand-pointer me-1"></i> Seleccionar
                                     </button>
                                 </td>
@@ -91,9 +97,56 @@
         </div>
 
         <!-- Paginación -->
-        <nav id="paginationContainer" class="mt-3">
-            <ul class="pagination justify-content-center" id="pagination"></ul>
-        </nav>
+        <?php if ($pagination['totalPages'] > 1): ?>
+            <nav class="mt-3">
+                <ul class="pagination justify-content-center">
+                    <!-- Primera -->
+                    <li class="page-item <?php echo $pagination['page'] <= 1 ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="<?php echo url('pagos/registrar?page=1' . (!empty($busqueda) ? '&busqueda=' . urlencode($busqueda) : '')); ?>">
+                            <i class="fas fa-angle-double-left"></i>
+                        </a>
+                    </li>
+                    
+                    <!-- Anterior -->
+                    <li class="page-item <?php echo $pagination['page'] <= 1 ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="<?php echo url('pagos/registrar?page=' . ($pagination['page'] - 1) . (!empty($busqueda) ? '&busqueda=' . urlencode($busqueda) : '')); ?>">
+                            <i class="fas fa-angle-left"></i>
+                        </a>
+                    </li>
+                    
+                    <!-- Páginas -->
+                    <?php
+                    $start = max(1, $pagination['page'] - 2);
+                    $end = min($pagination['totalPages'], $pagination['page'] + 2);
+                    for ($i = $start; $i <= $end; $i++):
+                    ?>
+                        <li class="page-item <?php echo $i == $pagination['page'] ? 'active' : ''; ?>">
+                            <a class="page-link" href="<?php echo url('pagos/registrar?page=' . $i . (!empty($busqueda) ? '&busqueda=' . urlencode($busqueda) : '')); ?>">
+                                <?php echo $i; ?>
+                            </a>
+                        </li>
+                    <?php endfor; ?>
+                    
+                    <!-- Siguiente -->
+                    <li class="page-item <?php echo $pagination['page'] >= $pagination['totalPages'] ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="<?php echo url('pagos/registrar?page=' . ($pagination['page'] + 1) . (!empty($busqueda) ? '&busqueda=' . urlencode($busqueda) : '')); ?>">
+                            <i class="fas fa-angle-right"></i>
+                        </a>
+                    </li>
+                    
+                    <!-- Última -->
+                    <li class="page-item <?php echo $pagination['page'] >= $pagination['totalPages'] ? 'disabled' : ''; ?>">
+                        <a class="page-link" href="<?php echo url('pagos/registrar?page=' . $pagination['totalPages'] . (!empty($busqueda) ? '&busqueda=' . urlencode($busqueda) : '')); ?>">
+                            <i class="fas fa-angle-double-right"></i>
+                        </a>
+                    </li>
+                </ul>
+                <p class="text-center text-muted mb-0">
+                    Página <?php echo $pagination['page']; ?> de <?php echo $pagination['totalPages']; ?>
+                    (<?php echo $pagination['total']; ?> colegiado(s) con deudas)
+                </p>
+            </nav>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -101,7 +154,7 @@
 <div class="card mb-4" id="paso2" style="display: none;">
     <div class="card-header bg-success text-white">
         <h5 class="mb-0">
-            <span class="badge bg-light text-success me-2">2</span>
+            <span class="badge">2</span>
             Seleccionar Deuda a Pagar
         </h5>
     </div>
@@ -122,18 +175,45 @@
             </div>
         </div>
 
-        <!-- Tabla de Deudas Pendientes -->
+        <!-- BUSCADOR DE DEUDAS - AQUÍ -->
+        <div class="row mb-3">
+            <div class="col-md-6">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" id="searchDeuda" class="form-control" 
+                           placeholder="Buscar deuda por concepto o descripción...">
+                    <button class="btn btn-outline-secondary" type="button" id="clearSearchDeuda">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mensaje cuando no hay deudas -->
         <div id="mensaje-sin-deudas" class="alert alert-warning" style="display: none;">
             <i class="fas fa-info-circle me-2"></i>
             El colegiado seleccionado no tiene deudas pendientes.
         </div>
 
+        <!-- Contenedor de tabla con búsqueda y paginación -->
         <div id="tabla-deudas-container">
+            <!-- Estos elementos deben existir desde el inicio -->
+            <div id="deudasPaginationContainer" class="mb-3" style="display: none;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div id="deudasPageInfo" class="text-muted small"></div>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0" id="deudasPagination"></ul>
+                    </nav>
+                </div>
+            </div>
+            
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead class="table-light">
                         <tr>
-                            <th width="5%"></th>
+                            <th width="5%">
+                                <input type="checkbox" id="selectAllDeudas" class="form-check-input">
+                            </th>
                             <th>Concepto</th>
                             <th>Descripción</th>
                             <th class="text-end">Monto Total</th>
@@ -144,12 +224,7 @@
                         </tr>
                     </thead>
                     <tbody id="deudas-body">
-                        <tr>
-                            <td colspan="8" class="text-center py-4">
-                                <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
-                                <p class="mt-2 mb-0">Cargando deudas...</p>
-                            </td>
-                        </tr>
+                        <!-- El contenido se llenará dinámicamente -->
                     </tbody>
                 </table>
             </div>
@@ -212,9 +287,13 @@
                     <div class="input-group">
                         <span class="input-group-text">S/</span>
                         <input type="number" name="monto" id="inputMonto" class="form-control" 
-                               step="0.01" min="0.01" required placeholder="0.00">
+                               step="0.01" min="0.01" required placeholder="0.00"
+                               oninput="validarMonto(this)">
                     </div>
-                    <small class="text-muted">Máximo: <span id="max-monto">S/ 0.00</span></small>
+                    <small class="text-muted">
+                        <span id="tipo-monto-info"></span>
+                        <span id="max-monto">S/ 0.00</span>
+                    </small>
                 </div>
                 
                 <div class="col-md-4 mb-3">
@@ -276,3 +355,43 @@
         </form>
     </div>
 </div>
+
+<script>
+// Seleccionar todas las deudas
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAllDeudas');
+    if (selectAll) {
+        selectAll.addEventListener('change', function() {
+            const checkboxes = document.querySelectorAll('input[name="deuda_checkbox"]:not(:disabled)');
+            
+            if (this.checked) {
+                // Seleccionar todas las visibles
+                checkboxes.forEach((checkbox, index) => {
+                    if (!checkbox.checked) {
+                        checkbox.checked = true;
+                        const dataIndex = checkbox.dataset.index;
+                        if (dataIndex !== undefined) {
+                            // Usar la función del módulo
+                            if (typeof window.PagosModule?.seleccionarDeuda === 'function') {
+                                window.PagosModule.seleccionarDeuda(parseInt(dataIndex));
+                            }
+                        }
+                    }
+                });
+            } else {
+                // Deseleccionar todas
+                window.PagosModule.deudasSeleccionadas = [];
+                window.PagosModule.tipoSeleccionActual = null;
+                
+                // Actualizar UI
+                if (typeof window.PagosModule?.actualizarSeleccionDeudasUI === 'function') {
+                    window.PagosModule.actualizarSeleccionDeudasUI();
+                }
+                if (typeof window.PagosModule?.actualizarResumenSeleccion === 'function') {
+                    window.PagosModule.actualizarResumenSeleccion();
+                }
+            }
+        });
+    }
+});
+</script>

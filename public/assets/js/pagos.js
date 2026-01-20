@@ -16,6 +16,14 @@ window.PagosModule = (function() {
     let currentPage = 1;
     let rowsPerPage = 10;
     let allRows = [];
+
+    // NUEVAS VARIABLES PARA LAS FUNCIONALIDADES
+    let deudasSeleccionadas = [];
+    let tipoSeleccionActual = null;
+    let currentDeudaPage = 1;
+    let deudasPerPage = 5;
+    let searchTermDeudas = '';
+    let deudasFiltradas = [];
     
     // ===================================
     // INICIALIZACIÓN
@@ -315,7 +323,13 @@ window.PagosModule = (function() {
         const url = getAppUrl(`pagos/api-deudas-pendientes/${colegiadoId}`);
         
         console.log(`🔄 Cargando deudas para colegiado ${colegiadoId}...`);
-        console.log(`📡 URL solicitada: ${url}`);
+        
+        // Verificar que el elemento existe
+        if (!tbody) {
+            console.error('❌ No se encontró el elemento tbody con ID "deudas-body"');
+            showToast('Error: No se pudo cargar la tabla de deudas', 'error');
+            return;
+        }
         
         // Mostrar spinner de carga
         tbody.innerHTML = `
@@ -329,15 +343,15 @@ window.PagosModule = (function() {
         
         fetch(url)
             .then(response => {
-                console.log('📥 Respuesta recibida del servidor:', response.status, response.statusText);
-                
-                // --- ESCUDO DE SEGURIDAD PARA JSON ---
+                // Verificar si la respuesta es JSON
                 const contentType = response.headers.get("content-type");
                 
-                // Si la respuesta no es OK o no es JSON (es un HTML de error 404/500)
-                if (!response.ok || !contentType || !contentType.includes("application/json")) {
-                    console.error('❌ Error: El servidor no devolvió JSON. Tipo recibido:', contentType);
-                    throw new Error(`Error del servidor (${response.status}). Es posible que la ruta sea incorrecta.`);
+                if (!response.ok) {
+                    throw new Error(`Error ${response.status}: ${response.statusText}`);
+                }
+                
+                if (!contentType || !contentType.includes("application/json")) {
+                    throw new Error('El servidor no devolvió datos en formato JSON');
                 }
                 
                 return response.json();
@@ -347,30 +361,52 @@ window.PagosModule = (function() {
                 
                 if (data.success && data.deudas && data.deudas.length > 0) {
                     deudasData = data.deudas;
-                    mostrarDeudas(deudasData); // Esta función ya la tienes en tu archivo
+                    mostrarDeudas(deudasData);
                     
-                    document.getElementById('mensaje-sin-deudas').style.display = 'none';
-                    document.getElementById('tabla-deudas-container').style.display = 'block';
+                    // Ocultar mensaje de sin deudas si existe
+                    const mensajeSinDeudas = document.getElementById('mensaje-sin-deudas');
+                    if (mensajeSinDeudas) {
+                        mensajeSinDeudas.style.display = 'none';
+                    }
+                    
+                    // Mostrar tabla
+                    const tablaContainer = document.getElementById('tabla-deudas-container');
+                    if (tablaContainer) {
+                        tablaContainer.style.display = 'block';
+                    }
                 } else {
                     console.warn('⚠️ El servidor respondió éxito pero sin deudas');
-                    document.getElementById('mensaje-sin-deudas').style.display = 'block';
-                    document.getElementById('tabla-deudas-container').style.display = 'none';
+                    
+                    // Mostrar mensaje de sin deudas
+                    const mensajeSinDeudas = document.getElementById('mensaje-sin-deudas');
+                    if (mensajeSinDeudas) {
+                        mensajeSinDeudas.style.display = 'block';
+                    }
+                    
+                    // Ocultar tabla
+                    const tablaContainer = document.getElementById('tabla-deudas-container');
+                    if (tablaContainer) {
+                        tablaContainer.style.display = 'none';
+                    }
+                    
                     tbody.innerHTML = '';
                 }
             })
             .catch(error => {
-                console.error('❌ Error crítico en fetch:', error);
+                console.error('❌ Error al cargar deudas:', error);
                 
-                // Mostrar error visual en la tabla para el usuario
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="8" class="text-center text-danger py-4">
-                            <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                            <p class="mb-0"><strong>Error al cargar deudas:</strong> ${error.message}</p>
-                            <small>Verifica la consola (F12) para más detalles.</small>
-                        </td>
-                    </tr>
-                `;
+                // Mostrar error en la tabla
+                if (tbody) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="8" class="text-center text-danger py-4">
+                                <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                                <p class="mb-0"><strong>Error al cargar deudas:</strong> ${error.message}</p>
+                                <small>Verifica la consola (F12) para más detalles.</small>
+                            </td>
+                        </tr>
+                    `;
+                }
                 
                 if (typeof showToast === 'function') {
                     showToast('No se pudieron cargar las deudas', 'error');
@@ -381,23 +417,77 @@ window.PagosModule = (function() {
     function mostrarDeudas(deudas) {
         console.log(`📋 Mostrando ${deudas.length} deudas`);
         
+        // Ordenar por fecha de vencimiento (ascendente)
+        deudas.sort((a, b) => {
+            return new Date(a.fecha_vencimiento) - new Date(b.fecha_vencimiento);
+        });
+
+        deudasData = deudas;
+        deudasFiltradas = [...deudas];
+
+        // Resetear selección
+        deudasSeleccionadas = [];
+        tipoSeleccionActual = null;
+        currentDeudaPage = 1;
+        searchTermDeudas = ''; // Resetear término de búsqueda
+
+        // Limpiar campo de búsqueda si existe
+        const searchInput = document.getElementById('searchDeuda');
+        if (searchInput) {
+            searchInput.value = '';
+        }
+
+        // Renderizar
+        renderDeudasPaginated();
+        initDeudasPagination();
+        initDeudasSearch(); // Inicializar eventos de búsqueda
+    }
+
+    function renderDeudasPaginated() {
         const tbody = document.getElementById('deudas-body');
-        tbody.innerHTML = '';
         
-        deudas.forEach((deuda, index) => {
+        if (deudasFiltradas.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" class="text-center py-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        No se encontraron deudas con los filtros aplicados
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        // Calcular índices para paginación
+        const start = (currentDeudaPage - 1) * deudasPerPage;
+        const end = start + deudasPerPage;
+        const deudasPagina = deudasFiltradas.slice(start, end);
+
+        tbody.innerHTML = '';
+
+        deudasPagina.forEach((deuda, index) => {
+            const idxOriginal = deudasData.findIndex(d => d.idDeuda === deuda.idDeuda);
             const vencimiento = new Date(deuda.fecha_vencimiento);
             const hoy = new Date();
             const diasVencidos = Math.ceil((hoy - vencimiento) / (1000 * 3600 * 24));
             const estaVencida = diasVencidos > 0;
-            
+
             const row = document.createElement('tr');
             row.className = estaVencida ? 'table-danger' : '';
+
+            // Determinar tipo para icono
+            const esConceptoDefinido = deuda.concepto_id !== null && deuda.concepto_id !== '';
+            const iconoTipo = esConceptoDefinido ? 'fa-tag' : 'fa-edit';
+            const colorTipo = esConceptoDefinido ? 'text-primary' : 'text-warning';
+
             row.innerHTML = `
                 <td>
-                    <input type="radio" name="deuda_radio" value="${deuda.idDeuda}" 
-                           data-index="${index}" class="form-check-input">
+                    <input type="checkbox" name="deuda_checkbox" 
+                           data-index="${idxOriginal}" class="form-check-input">
                 </td>
                 <td>
+                    <i class="fas ${iconoTipo} ${colorTipo} me-1" 
+                       title="${esConceptoDefinido ? 'Concepto definido' : 'Deuda manual'}"></i>
                     <strong>${window.AppUtils.escapeHtml(deuda.concepto_nombre || 'Sin concepto')}</strong>
                     ${estaVencida ? '<br><span class="badge bg-danger">Vencida</span>' : ''}
                 </td>
@@ -420,41 +510,269 @@ window.PagosModule = (function() {
                     </span>
                 </td>
             `;
-            
+                
             tbody.appendChild(row);
-            
-            const radio = row.querySelector('input[type="radio"]');
-            radio.addEventListener('change', () => seleccionarDeuda(index));
+                
+            const checkbox = row.querySelector('input[type="checkbox"]');
+            checkbox.addEventListener('change', () => seleccionarDeuda(idxOriginal));
         });
+    }
+
+    function initDeudasPagination() {
+        const totalPages = Math.ceil(deudasFiltradas.length / deudasPerPage);
+        const pagination = document.getElementById('deudasPagination');
+        const container = document.getElementById('deudasPaginationContainer');
+        
+        if (!pagination || totalPages <= 1) {
+            if (container) container.style.display = 'none';
+            return;
+        }
+
+        if (container) container.style.display = 'block';
+        pagination.innerHTML = '';
+
+        // Botón Anterior
+        const prevLi = document.createElement('li');
+        prevLi.className = `page-item ${currentDeudaPage === 1 ? 'disabled' : ''}`;
+        prevLi.innerHTML = `<a class="page-link" href="#"><i class="fas fa-chevron-left"></i></a>`;
+        if (currentDeudaPage > 1) {
+            prevLi.addEventListener('click', (e) => {
+                e.preventDefault();
+                currentDeudaPage--;
+                renderDeudasPaginated();
+                initDeudasPagination();
+            });
+        }
+        pagination.appendChild(prevLi);
+
+        // Números de página
+        const maxPagesToShow = 5;
+        let startPage = Math.max(1, currentDeudaPage - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(totalPages, startPage + maxPagesToShow - 1);
+
+        if (endPage - startPage + 1 < maxPagesToShow) {
+            startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+
+        for (let i = startPage; i <= endPage; i++) {
+            const li = document.createElement('li');
+            li.className = `page-item ${i === currentDeudaPage ? 'active' : ''}`;
+            li.innerHTML = `<a class="page-link" href="#">${i}</a>`;
+            li.addEventListener('click', (e) => {
+                e.preventDefault();
+                currentDeudaPage = i;
+                renderDeudasPaginated();
+                initDeudasPagination();
+            });
+            pagination.appendChild(li);
+        }
+
+        // Botón Siguiente
+        const nextLi = document.createElement('li');
+        nextLi.className = `page-item ${currentDeudaPage === totalPages ? 'disabled' : ''}`;
+        nextLi.innerHTML = `<a class="page-link" href="#"><i class="fas fa-chevron-right"></i></a>`;
+        if (currentDeudaPage < totalPages) {
+            nextLi.addEventListener('click', (e) => {
+                e.preventDefault();
+                currentDeudaPage++;
+                renderDeudasPaginated();
+                initDeudasPagination();
+            });
+        }
+        pagination.appendChild(nextLi);
+
+        // Información de página
+        const infoElement = document.getElementById('deudasPageInfo');
+        if (infoElement) {
+            const startItem = (currentDeudaPage - 1) * deudasPerPage + 1;
+            const endItem = Math.min(currentDeudaPage * deudasPerPage, deudasFiltradas.length);
+            infoElement.textContent = `Mostrando ${startItem}-${endItem} de ${deudasFiltradas.length} deudas`;
+        }
+    }
+
+    function initDeudasSearch() {
+        // Configurar evento de búsqueda (los elementos YA existen en el HTML)
+        const searchDeuda = document.getElementById('searchDeuda');
+        const clearSearch = document.getElementById('clearSearchDeuda');
+
+        if (searchDeuda) {
+            searchDeuda.addEventListener('input', function() {
+                searchTermDeudas = this.value.toLowerCase().trim();
+                filtrarDeudas();
+            });
+        }
+
+        if (clearSearch) {
+            clearSearch.addEventListener('click', function() {
+                searchTermDeudas = '';
+                if (searchDeuda) searchDeuda.value = '';
+                filtrarDeudas();
+            });
+        }
+    }
+
+    function filtrarDeudas() {
+        if (!searchTermDeudas) {
+            deudasFiltradas = [...deudasData];
+        } else {
+            deudasFiltradas = deudasData.filter(deuda => {
+                const concepto = (deuda.concepto_nombre || '').toLowerCase();
+                const descripcion = (deuda.descripcion_deuda || '').toLowerCase();
+                return concepto.includes(searchTermDeudas) || descripcion.includes(searchTermDeudas);
+            });
+        }
+
+        currentDeudaPage = 1;
+        renderDeudasPaginated();
+        initDeudasPagination();
     }
     
     function seleccionarDeuda(index) {
-        deudaSeleccionada = deudasData[index];
+        const deuda = deudasData[index];
         
-        console.log('💰 Deuda seleccionada:', deudaSeleccionada);
+        // Determinar tipo de deuda
+        const esConceptoDefinido = deuda.concepto_id !== null && deuda.concepto_id !== '';
+        const tipoDeuda = esConceptoDefinido ? 'concepto' : 'manual';
         
+        // Si es la primera selección, establecer el tipo
+        if (deudasSeleccionadas.length === 0) {
+            tipoSeleccionActual = tipoDeuda;
+        }
+
+        // Verificar si se intenta mezclar tipos
+        if (tipoSeleccionActual !== null && tipoSeleccionActual !== tipoDeuda) {
+            showToast('No puede seleccionar deudas de concepto definido y manuales a la vez', 'warning');
+            return;
+        }
+
+        // Toggle selección
+        const idx = deudasSeleccionadas.findIndex(d => d.idDeuda === deuda.idDeuda);
+
+        if (idx === -1) {
+            // Agregar a selección
+            deudasSeleccionadas.push(deuda);
+        } else {
+            // Remover de selección
+            deudasSeleccionadas.splice(idx, 1);
+        }
+
+        // Si no hay selecciones, resetear tipo
+        if (deudasSeleccionadas.length === 0) {
+            tipoSeleccionActual = null;
+        }
+
+        // Actualizar UI
+        actualizarSeleccionDeudasUI();
+        actualizarResumenSeleccion();
+    }
+
+    function actualizarSeleccionDeudasUI() {
+        const checkboxes = document.querySelectorAll('input[name="deuda_checkbox"]');
+        
+        checkboxes.forEach((checkbox, index) => {
+            const deudaId = deudasData[index]?.idDeuda;
+            if (deudaId) {
+                const estaSeleccionada = deudasSeleccionadas.some(d => d.idDeuda === deudaId);
+                checkbox.checked = estaSeleccionada;
+
+                // Marcar fila visualmente
+                const row = checkbox.closest('tr');
+                if (row) {
+                    if (estaSeleccionada) {
+                        row.classList.add('table-primary');
+                    } else {
+                        row.classList.remove('table-primary');
+                    }
+                }
+            }
+        });
+    }
+
+    function actualizarResumenSeleccion() {
+        const container = document.getElementById('deuda-seleccionada-container');
+        const btnSiguiente = document.getElementById('btnSiguientePaso3');
+        
+        if (deudasSeleccionadas.length === 0) {
+            container.style.display = 'none';
+            btnSiguiente.disabled = true;
+            return;
+        }
+
+        container.style.display = 'block';
+        btnSiguiente.disabled = false;
+
+        // Calcular totales
+        let totalSaldo = 0;
+        let conceptos = [];
+        let fechasVencimiento = [];
+
+        deudasSeleccionadas.forEach(deuda => {
+            totalSaldo += parseFloat(deuda.saldo_pendiente || 0);
+            conceptos.push(deuda.concepto_nombre || 'Sin concepto');
+
+            // Obtener fecha de vencimiento formateada
+            if (deuda.fecha_vencimiento) {
+                const fecha = new Date(deuda.fecha_vencimiento);
+                fechasVencimiento.push(window.AppUtils.formatDate(fecha));
+            }
+        });
+
+        // Mostrar resumen
         document.getElementById('deuda-concepto').textContent = 
-            deudaSeleccionada.concepto_nombre || 'Sin concepto';
+            conceptos.join(', ');
         document.getElementById('deuda-saldo').textContent = 
-            `S/ ${parseFloat(deudaSeleccionada.saldo_pendiente || 0).toFixed(2)}`;
-        document.getElementById('deuda-vencimiento').textContent = 
-            window.AppUtils.formatDate(new Date(deudaSeleccionada.fecha_vencimiento));
-        
-        document.getElementById('inputDeudaId').value = deudaSeleccionada.idDeuda;
-        
-        const maxMonto = parseFloat(deudaSeleccionada.saldo_pendiente || 0);
-        const maxMontoElement = document.getElementById('max-monto');
-        maxMontoElement.textContent = `S/ ${maxMonto.toFixed(2)}`;
-        maxMontoElement.dataset.max = maxMonto;
-        
+            `S/ ${totalSaldo.toFixed(2)}`;
+
+        // Mostrar fecha(s) de vencimiento
+        const fechaElement = document.getElementById('deuda-vencimiento');
+        if (fechasVencimiento.length > 0) {
+            if (deudasSeleccionadas.length === 1) {
+                fechaElement.textContent = fechasVencimiento[0];
+            } else {
+                const fechaMin = fechasVencimiento.sort()[0];
+                fechaElement.textContent = `${fechasVencimiento.length} fechas (primera: ${fechaMin})`;
+            }
+        } else {
+            fechaElement.textContent = 'Sin fecha';
+        }
+
+        // Mostrar cantidad seleccionada y tipo
+        const cantidadElement = document.getElementById('deuda-cantidad');
+        if (!cantidadElement) {
+            const nuevoElemento = document.createElement('div');
+            nuevoElemento.id = 'deuda-cantidad';
+            nuevoElemento.className = 'mb-2';
+            document.querySelector('#deuda-seleccionada-container .card-body').prepend(nuevoElemento);
+        }
+
+        const tipoTexto = tipoSeleccionActual === 'concepto' ? 'Conceptos definidos' : 'Deudas manuales';
+        const iconoTipo = tipoSeleccionActual === 'concepto' ? 'fa-tag' : 'fa-edit';
+
+        document.getElementById('deuda-cantidad').innerHTML = 
+            `<strong>Cantidad:</strong> ${deudasSeleccionadas.length} deuda(s) 
+             <span class="badge bg-${tipoSeleccionActual === 'concepto' ? 'primary' : 'warning'} ms-2">
+                <i class="fas ${iconoTipo} me-1"></i>${tipoTexto}
+             </span>`;
+
+        // Configurar inputs para el paso 3
         const inputMonto = document.getElementById('inputMonto');
-        inputMonto.value = maxMonto.toFixed(2);
-        inputMonto.max = maxMonto;
-        
-        document.getElementById('deuda-seleccionada-container').style.display = 'block';
-        document.getElementById('btnSiguientePaso3').disabled = false;
-        
-        actualizarTotal();
+        const maxMontoElement = document.getElementById('max-monto');
+
+        if (inputMonto && maxMontoElement) {
+            if (tipoSeleccionActual === 'concepto') {
+                // Para conceptos definidos, establecer monto total automáticamente
+                inputMonto.value = totalSaldo.toFixed(2);
+                inputMonto.readOnly = true;
+                maxMontoElement.textContent = `Total fijo: S/ ${totalSaldo.toFixed(2)}`;
+                maxMontoElement.dataset.max = totalSaldo;
+            } else {
+                // Para deudas manuales, permitir pago en partes
+                inputMonto.max = totalSaldo;
+                inputMonto.readOnly = false;
+                maxMontoElement.textContent = `Máximo: S/ ${totalSaldo.toFixed(2)}`;
+                maxMontoElement.dataset.max = totalSaldo;
+            }
+        }
     }
     
     function cargarMetodosPago() {
@@ -497,34 +815,55 @@ window.PagosModule = (function() {
     }
     
     function validarFormularioPago(e) {
+        // NO hacer e.preventDefault() aquí, déjalo que el formulario se envíe normalmente
+        
         const montoInput = document.getElementById('inputMonto');
-        const maxMontoElement = document.getElementById('max-monto');
         const selectMetodo = document.getElementById('selectMetodo');
         
         const monto = parseFloat(montoInput?.value) || 0;
-        const maxMonto = parseFloat(maxMontoElement?.dataset?.max) || 0;
         
-        if (monto > maxMonto) {
-            e.preventDefault();
-            showToast('El monto excede el saldo pendiente', 'error');
-            montoInput.focus();
-            return false;
-        }
-        
+        // Validaciones básicas
         if (monto <= 0) {
-            e.preventDefault();
             showToast('El monto debe ser mayor a cero', 'error');
             montoInput.focus();
+            e.preventDefault(); // Solo aquí prevenir si hay error
             return false;
         }
-        
+
         if (!selectMetodo?.value) {
-            e.preventDefault();
             showToast('Debe seleccionar un método de pago', 'error');
             selectMetodo.focus();
+            e.preventDefault(); // Solo aquí prevenir si hay error
             return false;
         }
-        
+
+        // Validar según tipo de deuda
+        const totalSaldo = deudasSeleccionadas.reduce((sum, d) => 
+            sum + parseFloat(d.saldo_pendiente || 0), 0);
+
+        if (tipoSeleccionActual === 'concepto') {
+            // Para conceptos definidos, debe pagarse el total exacto
+            if (Math.abs(monto - totalSaldo) > 0.01) {
+                showToast(`Debe pagar el monto exacto: S/ ${totalSaldo.toFixed(2)}`, 'error');
+                montoInput.focus();
+                e.preventDefault(); // Solo aquí prevenir si hay error
+                return false;
+            }
+        } else {
+            // Para deudas manuales, validar límite máximo
+            if (monto > totalSaldo) {
+                showToast(`El monto excede el saldo pendiente (S/ ${totalSaldo.toFixed(2)})`, 'error');
+                montoInput.focus();
+                e.preventDefault(); // Solo aquí prevenir si hay error
+                return false;
+            }
+        }
+
+        // Log para debugging
+        console.log('Formulario validado correctamente');
+        console.log('Deudas a pagar:', deudasSeleccionadas.map(d => d.idDeuda));
+
+        // Devolver true para permitir el envío normal del formulario
         return true;
     }
     
@@ -710,6 +1049,31 @@ window.PagosModule = (function() {
     return {
         init: init,
         volverPaso1: function() {
+            // Resetear selecciones
+            deudasSeleccionadas = [];
+            tipoSeleccionActual = null;
+            currentDeudaPage = 1;
+            searchTermDeudas = '';
+
+            // Resetear inputs
+            const inputMonto = document.getElementById('inputMonto');
+            if (inputMonto) {
+                inputMonto.readOnly = false;
+                inputMonto.value = '';
+            }
+
+            const inputDeudaId = document.getElementById('inputDeudaId');
+            if (inputDeudaId) {
+                inputDeudaId.disabled = false;
+                inputDeudaId.value = '';
+            }
+
+            const inputDeudasIds = document.getElementById('inputDeudasIds');
+            if (inputDeudasIds) {
+                inputDeudasIds.remove();
+            }
+
+            // Ocultar/mostrar pasos
             document.getElementById('paso2').style.display = 'none';
             document.getElementById('paso3').style.display = 'none';
             document.getElementById('paso1').style.display = 'block';
@@ -721,14 +1085,113 @@ window.PagosModule = (function() {
             document.getElementById('paso2').scrollIntoView({ behavior: 'smooth' });
         },
         irPaso3: function() {
-            if (!deudaSeleccionada) {
-                showToast('Debe seleccionar una deuda', 'warning');
+            if (deudasSeleccionadas.length === 0) {
+                showToast('Debe seleccionar al menos una deuda', 'warning');
                 return;
             }
-            
+        
+            // Configurar formulario para manejar múltiples deudas
+            const form = document.getElementById('formRegistrarPago');
+            if (!form) {
+                console.error('Formulario no encontrado');
+                showToast('Error: Formulario no encontrado', 'error');
+                return;
+            }
+        
+            // 1. Establecer colegiado ID
+            const inputColegiadoId = document.getElementById('inputColegiadoId');
+            if (inputColegiadoId && colegiadoSeleccionado) {
+                inputColegiadoId.value = colegiadoSeleccionado.id;
+            }
+        
+            // 2. Manejar IDs de deudas
+            // Eliminar inputs de deudas anteriores si existen
+            const existingDeudaInputs = form.querySelectorAll('input[name^="deudas"]');
+            existingDeudaInputs.forEach(input => input.remove());
+
+            // Eliminar también otros campos de deuda
+            const existingDeudaId = form.querySelector('input[name="deuda_id"]');
+            if (existingDeudaId) {
+                existingDeudaId.remove();
+            }
+        
+            if (deudasSeleccionadas.length === 1) {
+                // Caso simple: una sola deuda
+                const inputDeudaId = document.createElement('input');
+                inputDeudaId.type = 'hidden';
+                inputDeudaId.name = 'deuda_id';
+                inputDeudaId.value = deudasSeleccionadas[0].idDeuda;
+                form.appendChild(inputDeudaId);
+
+                console.log('Deuda única seleccionada:', deudasSeleccionadas[0].idDeuda);
+            } else {
+                // Caso múltiple: varias deudas
+                deudasSeleccionadas.forEach((deuda, index) => {
+                    const inputDeuda = document.createElement('input');
+                    inputDeuda.type = 'hidden';
+                    inputDeuda.name = 'deudas_ids[]'; // Array para PHP
+                    inputDeuda.value = deuda.idDeuda;
+                    form.appendChild(inputDeuda);
+
+                    console.log(`Deuda ${index + 1} añadida:`, deuda.idDeuda);
+                });
+
+                // Agregar campo para indicar que son múltiples
+                const inputMultiple = document.createElement('input');
+                inputMultiple.type = 'hidden';
+                inputMultiple.name = 'es_pago_multiple';
+                inputMultiple.value = '1';
+                form.appendChild(inputMultiple);
+
+                // Si es pago de conceptos definidos (pago completo)
+                if (tipoSeleccionActual === 'concepto') {
+                    const inputPagoCompleto = document.createElement('input');
+                    inputPagoCompleto.type = 'hidden';
+                    inputPagoCompleto.name = 'pago_completo';
+                    inputPagoCompleto.value = '1';
+                    form.appendChild(inputPagoCompleto);
+                }
+            }
+        
+            // 3. Configurar monto según tipo
+            const totalSaldo = deudasSeleccionadas.reduce((sum, d) => 
+                sum + parseFloat(d.saldo_pendiente || 0), 0);
+
+            const inputMonto = document.getElementById('inputMonto');
+            const maxMontoElement = document.getElementById('max-monto');
+
+            if (inputMonto && maxMontoElement) {
+                if (tipoSeleccionActual === 'concepto') {
+                    // Para conceptos definidos: monto fijo
+                    inputMonto.value = totalSaldo.toFixed(2);
+                    inputMonto.readOnly = true;
+                    maxMontoElement.textContent = `Total fijo: S/ ${totalSaldo.toFixed(2)}`;
+                } else {
+                    // Para deudas manuales: permitir pago parcial
+                    inputMonto.max = totalSaldo;
+                    inputMonto.readOnly = false;
+                    maxMontoElement.textContent = `Máximo: S/ ${totalSaldo.toFixed(2)}`;
+
+                    // Valor por defecto: el total completo
+                    inputMonto.value = totalSaldo.toFixed(2);
+                }
+
+                // Actualizar total visual
+                actualizarTotal();
+            }
+        
+            // 4. Mostrar paso 3
             document.getElementById('paso2').style.display = 'none';
             document.getElementById('paso3').style.display = 'block';
             document.getElementById('paso3').scrollIntoView({ behavior: 'smooth' });
+        
+            // 5. Log para debugging
+            console.log('=== PASO 3 CONFIGURADO ===');
+            console.log('Deudas seleccionadas:', deudasSeleccionadas.length);
+            console.log('Tipo:', tipoSeleccionActual);
+            console.log('Total saldo:', totalSaldo);
+            console.log('IDs de deudas:', deudasSeleccionadas.map(d => d.idDeuda));
+            console.log('Inputs creados:', form.querySelectorAll('input[name^="deudas"]').length);
         },
         confirmarPago: confirmarPago,
         anularPago: anularPago,
@@ -861,6 +1324,38 @@ function calcularMontoAdelantado() {
     }
     
     container.style.display = 'block';
+}
+
+function validarMonto(input) {
+    const monto = parseFloat(input.value) || 0;
+    const maxMonto = parseFloat(document.getElementById('max-monto')?.dataset?.max) || 0;
+    const tipoInfo = document.getElementById('tipo-monto-info');
+    
+    if (tipoSeleccionActual === 'concepto') {
+        // Para conceptos definidos: mostrar mensaje específico
+        if (tipoInfo) {
+            tipoInfo.textContent = 'Pago completo de conceptos definidos. ';
+            tipoInfo.className = 'text-info';
+        }
+        
+        if (Math.abs(monto - maxMonto) > 0.01) {
+            showToast(`Para conceptos definidos debe pagar el monto exacto: S/ ${maxMonto.toFixed(2)}`, 'warning');
+            input.value = maxMonto.toFixed(2);
+        }
+    } else {
+        // Para deudas manuales: validar límite
+        if (tipoInfo) {
+            tipoInfo.textContent = 'Puede pagar parcialmente. ';
+            tipoInfo.className = 'text-warning';
+        }
+        
+        if (monto > maxMonto && maxMonto > 0) {
+            showToast(`El monto no puede exceder S/ ${maxMonto.toFixed(2)}`, 'warning');
+            input.value = maxMonto.toFixed(2);
+        }
+    }
+    
+    actualizarTotal();
 }
 
 // ===================================
