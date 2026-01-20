@@ -573,4 +573,61 @@ class PagoRepository {
         
         return $this->db->query($sql, ['colegiado_id' => $colegiadoId]);
     }
+
+    public function buscarPaginated($filtros = [], $pagina = 1, $porPagina = 20) {
+        $offset = ($pagina - 1) * $porPagina;
+        
+        $where = "WHERE 1=1";
+        $params = [];
+        
+        if (!empty($filtros['numero_colegiatura'])) {
+            $where .= " AND numero_colegiatura LIKE :numero";
+            $params['numero'] = '%' . $filtros['numero_colegiatura'] . '%';
+        }
+        
+        if (!empty($filtros['dni'])) {
+            $where .= " AND dni LIKE :dni";
+            $params['dni'] = '%' . $filtros['dni'] . '%';
+        }
+        
+        if (!empty($filtros['nombres'])) {
+            $where .= " AND (nombres LIKE :nombre_busqueda OR apellido_paterno LIKE :apellido1 OR apellido_materno LIKE :apellido2)";
+            $params['nombre_busqueda'] = '%' . $filtros['nombres'] . '%';
+            $params['apellido1'] = '%' . $filtros['nombres'] . '%';
+            $params['apellido2'] = '%' . $filtros['nombres'] . '%';
+        }
+        
+        if (!empty($filtros['estado'])) {
+            $where .= " AND estado = :estado";
+            $params['estado'] = $filtros['estado'];
+        }
+        
+        // Contar total con filtros
+        $sqlCount = "SELECT COUNT(*) as total FROM colegiados $where";
+        $resultCount = $this->db->queryOne($sqlCount, $params);
+        $total = $resultCount['total'];
+        
+        // Obtener registros con filtros y paginación
+        $sql = "SELECT * FROM colegiados $where 
+                ORDER BY apellido_paterno ASC, apellido_materno ASC 
+                LIMIT :limit OFFSET :offset";
+        
+        $params['limit'] = $porPagina;
+        $params['offset'] = $offset;
+        
+        $results = $this->db->query($sql, $params);
+        
+        $colegiados = [];
+        foreach ($results as $row) {
+            $colegiados[] = new Colegiado($row);
+        }
+        
+        return [
+            'data' => $colegiados,
+            'total' => $total,
+            'pagina' => $pagina,
+            'porPagina' => $porPagina,
+            'totalPaginas' => ceil($total / $porPagina)
+        ];
+    }
 }

@@ -561,9 +561,15 @@ class PagoController extends Controller {
         
         $opciones = $this->pagoService->obtenerOpcionesPago();
         
+        // PAGINACIÓN Y BÚSQUEDA
+        $page = (int)($this->getQuery('page') ?? 1);
+        $perPage = 10;
+        $busqueda = $this->getQuery('busqueda', '');
+        
         $deudaRepo = new DeudaRepository();
         $colegiadosRepo = new ColegiadoRepository();
         
+        // Obtener IDs base de colegiados con programaciones activas
         $sql = "SELECT DISTINCT p.colegiado_id 
                 FROM programacion_deudas p
                 WHERE p.estado = 'activa'
@@ -572,17 +578,64 @@ class PagoController extends Controller {
         $db = Database::getInstance();
         $results = $db->query($sql);
         
-        $colegiados = [];
-        foreach ($results as $row) {
-            $colegiado = $colegiadosRepo->findById($row['colegiado_id']);
-            if ($colegiado) {
-                $colegiados[] = $colegiado;
+        $idsConProgramacion = array_column($results, 'colegiado_id');
+        
+        if (empty($idsConProgramacion)) {
+            $this->render('pagos/registrar_adelantado', [
+                'metodos' => $opciones['metodos'],
+                'colegiados' => [],
+                'pagination' => [
+                    'total' => 0,
+                    'page' => 1,
+                    'perPage' => $perPage,
+                    'totalPages' => 0
+                ],
+                'busqueda' => $busqueda,
+                'active_menu' => 'pagos',
+                'titulo' => 'Registrar Pago Adelantado'
+            ]);
+            return;
+        }
+        
+        // Construir filtros para búsqueda
+        $filtros = [];
+        if (!empty($busqueda)) {
+            // Determinar tipo de búsqueda
+            if (is_numeric($busqueda)) {
+                if (strlen($busqueda) <= 5) {
+                    $filtros['numero_colegiatura'] = $busqueda;
+                } elseif (strlen($busqueda) <= 8) {
+                    $filtros['dni'] = $busqueda;
+                } else {
+                    $filtros['nombres'] = $busqueda;
+                }
+            } else {
+                $filtros['nombres'] = $busqueda;
             }
         }
         
+        // Obtener colegiados filtrados y paginados
+        $resultado = $colegiadosRepo->buscarPaginated($filtros, $page, $perPage);
+        
+        // Filtrar solo los que tienen programaciones activas
+        $colegiadosFiltrados = array_filter($resultado['data'], function($col) use ($idsConProgramacion) {
+            return in_array($col->idColegiados, $idsConProgramacion);
+        });
+        
+        // Recalcular totales después del filtro
+        $totalFiltrados = count($colegiadosFiltrados);
+        $totalPages = ceil($totalFiltrados / $perPage);
+        
         $this->render('pagos/registrar_adelantado', [
             'metodos' => $opciones['metodos'],
-            'colegiados' => $colegiados,
+            'colegiados' => array_values($colegiadosFiltrados),
+            'pagination' => [
+                'total' => $totalFiltrados,
+                'page' => $page,
+                'perPage' => $perPage,
+                'totalPages' => $totalPages
+            ],
+            'busqueda' => $busqueda,
             'active_menu' => 'pagos',
             'titulo' => 'Registrar Pago Adelantado'
         ]);

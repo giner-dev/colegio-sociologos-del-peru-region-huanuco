@@ -739,16 +739,10 @@ window.PagosModule = (function() {
 
 
 function initRegistrarAdelantado() {
-    console.log('📅 Inicializando registro de pago adelantado...');
+    console.log('Inicializando registro de pago adelantado...');
     
-    const searchInput = document.getElementById('searchColegiado');
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            const searchTerm = this.value.toLowerCase().trim();
-            filterColegiadosAdelantado(searchTerm);
-        });
-    }
-    
+    // Ya no se necesita búsqueda en JS porque se hace en servidor
+    // Solo se mantiene la selección de colegiado
     document.querySelectorAll('.btn-seleccionar-colegiado').forEach(btn => {
         btn.addEventListener('click', function() {
             const colegiadoId = this.dataset.colegiadoId;
@@ -786,22 +780,6 @@ function initRegistrarAdelantado() {
             }
         });
     }
-}
-
-function filterColegiadosAdelantado(searchTerm) {
-    const rows = document.querySelectorAll('.colegiado-row');
-    
-    rows.forEach(row => {
-        const numero = (row.dataset.numero || '').toLowerCase();
-        const dni = (row.dataset.dni || '').toLowerCase();
-        const nombre = (row.dataset.nombre || '').toLowerCase();
-        
-        const matches = numero.includes(searchTerm) || 
-                       dni.includes(searchTerm) || 
-                       nombre.includes(searchTerm);
-        
-        row.style.display = matches || searchTerm === '' ? '' : 'none';
-    });
 }
 
 function seleccionarColegiadoAdelantado(colegiadoId, nombre, numero) {
