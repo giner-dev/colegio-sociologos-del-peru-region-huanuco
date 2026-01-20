@@ -1,5 +1,6 @@
 <?php
 require_once __DIR__ . '/../../core/Controller.php';
+require_once __DIR__ . '/../models/Colegiado.php';
 require_once __DIR__ . '/../services/PagoService.php';
 require_once __DIR__ . '/../repositories/ColegiadoRepository.php';
 require_once __DIR__ . '/../repositories/DeudaRepository.php';
@@ -677,93 +678,17 @@ class PagoController extends Controller {
         $perPage = 10;
         $busqueda = $this->getQuery('busqueda', '');
 
-        $deudaRepo = new DeudaRepository();
-        $colegiadosRepo = new ColegiadoRepository();
-
-        // Obtener IDs base de colegiados con programaciones activas
-        // QUITA el filtro 'c.estado = 'habilitado'' o cámbialo
-        $sql = "SELECT DISTINCT p.colegiado_id 
-                FROM programacion_deudas p
-                INNER JOIN colegiados c ON p.colegiado_id = c.idColegiados
-                WHERE p.estado = 'activa'
-                AND (
-                    p.fecha_fin IS NULL 
-                    OR p.fecha_fin = '0000-00-00' 
-                    OR p.fecha_fin >= CURDATE()
-                    OR p.proxima_generacion >= CURDATE()
-                )";
-                // QUITADO: AND c.estado = 'habilitado'
-
-        $db = Database::getInstance();
-        $results = $db->query($sql);
-
-        $idsConProgramacion = array_column($results, 'colegiado_id');
-
-        // DEBUG: Ver qué IDs obtuvimos
-        error_log("IDs con programación encontrados: " . print_r($idsConProgramacion, true));
-
-        if (empty($idsConProgramacion)) {
-            $this->render('pagos/registrar_adelantado', [
-                'metodos' => $opciones['metodos'],
-                'colegiados' => [],
-                'pagination' => [
-                    'total' => 0,
-                    'page' => 1,
-                    'perPage' => $perPage,
-                    'totalPages' => 0
-                ],
-                'busqueda' => $busqueda,
-                'active_menu' => 'pagos',
-                'titulo' => 'Registrar Pago Adelantado'
-            ]);
-            return;
-        }
-
-        // Construir filtros para búsqueda - QUITA el filtro de estado aquí también
-        $filtros = [];
-        if (!empty($busqueda)) {
-            if (is_numeric($busqueda)) {
-                if (strlen($busqueda) <= 5) {
-                    $filtros['numero_colegiatura'] = $busqueda;
-                } elseif (strlen($busqueda) <= 8) {
-                    $filtros['dni'] = $busqueda;
-                } else {
-                    $filtros['nombres'] = $busqueda;
-                }
-            } else {
-                $filtros['nombres'] = $busqueda;
-            }
-        }
-
-        // QUITA el filtro de estado del método buscarPaginated
-        // O modifica el método para no filtrar por estado
-
-        // Obtener colegiados filtrados y paginados
-        $resultado = $colegiadosRepo->buscarPaginated($filtros, $page, $perPage);
-
-        // Filtrar solo los que tienen programaciones activas
-        $colegiadosFiltrados = array_filter($resultado['data'], function($col) use ($idsConProgramacion) {
-            return in_array($col->idColegiados, $idsConProgramacion);
-        });
-
-        // DEBUG: Ver qué colegiados se filtraron
-        error_log("Colegiados después de filtrar por programación: " . count($colegiadosFiltrados));
-        foreach ($colegiadosFiltrados as $col) {
-            error_log("  - ID: {$col->idColegiados}, Nombre: {$col->nombres} {$col->apellido_paterno}, Estado: {$col->estado}");
-        }
-
-        // Recalcular totales después del filtro
-        $totalFiltrados = count($colegiadosFiltrados);
-        $totalPages = ceil($totalFiltrados / $perPage);
+        // Obtener colegiados con programaciones usando nuestro nuevo método
+        $resultado = $this->obtenerColegiadosConProgramacionesPaginated($busqueda, $page, $perPage);
 
         $this->render('pagos/registrar_adelantado', [
             'metodos' => $opciones['metodos'],
-            'colegiados' => array_values($colegiadosFiltrados),
+            'colegiados' => $resultado['data'],
             'pagination' => [
-                'total' => $totalFiltrados,
-                'page' => $page,
-                'perPage' => $perPage,
-                'totalPages' => $totalPages
+                'total' => $resultado['total'],
+                'page' => $resultado['pagina'],
+                'perPage' => $resultado['porPagina'],
+                'totalPages' => $resultado['totalPaginas']
             ],
             'busqueda' => $busqueda,
             'active_menu' => 'pagos',
@@ -827,5 +752,89 @@ class PagoController extends Controller {
             $this->setError('Error: ' . implode(', ', $resultado['errors']));
             $this->redirect(url('pagos/registrar-adelantado'));
         }
+    }
+
+    // Obtiene colegiados con programaciones activas, sin filtrar por estado
+    private function obtenerColegiadosConProgramacionesPaginated($busqueda = '', $pagina = 1, $porPagina = 10) {
+        $db = Database::getInstance(); // Obtener instancia de Database
+        $offset = ($pagina - 1) * $porPagina;
+
+        // Consulta base - COLEGIADOS CON PROGRAMACIONES ACTIVAS
+        $sql = "SELECT DISTINCT 
+                    c.idColegiados,
+                    c.numero_colegiatura,
+                    c.dni,
+                    c.nombres,
+                    c.apellido_paterno,
+                    c.apellido_materno,
+                    c.estado,
+                    COUNT(pd.idProgramacion) as total_programaciones
+                FROM colegiados c
+                INNER JOIN programacion_deudas pd ON c.idColegiados = pd.colegiado_id
+                WHERE pd.estado = 'activa' 
+                AND (pd.fecha_fin IS NULL OR pd.fecha_fin >= CURDATE() OR pd.fecha_fin = '0000-00-00')";
+
+        $params = [];
+
+        // Aplicar búsqueda si existe
+        if (!empty($busqueda)) {
+            // Determinar tipo de búsqueda
+            if (is_numeric($busqueda)) {
+                if (strlen($busqueda) <= 5) {
+                    // Búsqueda por número de colegiatura
+                    $sql .= " AND c.numero_colegiatura LIKE :busqueda";
+                    $params['busqueda'] = '%' . $busqueda . '%';
+                } elseif (strlen($busqueda) <= 8) {
+                    // Búsqueda por DNI
+                    $sql .= " AND c.dni LIKE :busqueda";
+                    $params['busqueda'] = '%' . $busqueda . '%';
+                } else {
+                    // Número largo, buscar en nombres también
+                    $sql .= " AND (c.nombres LIKE :busqueda OR c.apellido_paterno LIKE :busqueda OR c.apellido_materno LIKE :busqueda)";
+                    $params['busqueda'] = '%' . $busqueda . '%';
+                }
+            } else {
+                // Búsqueda por texto (nombres o apellidos)
+                $sql .= " AND (c.nombres LIKE :busqueda OR c.apellido_paterno LIKE :busqueda OR c.apellido_materno LIKE :busqueda)";
+                $params['busqueda'] = '%' . $busqueda . '%';
+            }
+        }
+
+        $sql .= " GROUP BY c.idColegiados ORDER BY c.apellido_paterno ASC, c.apellido_materno ASC";
+
+        // 1. Contar total de resultados
+        $countSql = "SELECT COUNT(*) as total FROM ($sql) as subquery";
+        $countResult = $db->queryOne($countSql, $params);
+        $total = $countResult['total'];
+
+        // 2. Obtener datos con paginación
+        $sql .= " LIMIT :limit OFFSET :offset";
+        $params['limit'] = $porPagina;
+        $params['offset'] = $offset;
+
+        $results = $db->query($sql, $params);
+
+        // Convertir resultados a objetos Colegiado
+        $colegiados = [];
+        foreach ($results as $row) {
+            $colegiados[] = new Colegiado([
+                'idColegiados' => $row['idColegiados'],
+                'numero_colegiatura' => $row['numero_colegiatura'],
+                'dni' => $row['dni'],
+                'nombres' => $row['nombres'],
+                'apellido_paterno' => $row['apellido_paterno'],
+                'apellido_materno' => $row['apellido_materno'],
+                'estado' => $row['estado'],
+                'fecha_registro' => date('Y-m-d H:i:s')
+            ]);
+        }
+
+        return [
+            'data' => $colegiados,
+            'total' => $total,
+            'pagina' => $pagina,
+            'porPagina' => $porPagina,
+            'totalPaginas' => ceil($total / $porPagina)
+        ];
     }
 }

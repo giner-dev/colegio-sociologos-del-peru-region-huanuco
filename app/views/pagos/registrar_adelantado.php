@@ -83,12 +83,19 @@
                             <tr>
                                 <td><?php echo formatNumeroColegiatura($col->numero_colegiatura); ?></td>
                                 <td><?php echo e($col->dni); ?></td>
-                                <td><?php echo e($col->getNombreCompleto()); ?></td>
+                                <td>
+                                    <?php echo e($col->getNombreCompleto()); ?>
+                                    <!-- Mostrar estado -->
+                                    <span class="badge <?php echo $col->estado === 'habilitado' ? 'bg-success' : 'bg-danger'; ?> ms-2">
+                                        <?php echo $col->estado === 'habilitado' ? 'Habilitado' : 'Inhabilitado'; ?>
+                                    </span>
+                                </td>
                                 <td class="text-center">
                                     <button type="button" class="btn btn-sm btn-primary btn-seleccionar-colegiado"
                                             data-colegiado-id="<?php echo $col->idColegiados; ?>"
                                             data-nombre="<?php echo e($col->getNombreCompleto()); ?>"
-                                            data-numero="<?php echo formatNumeroColegiatura($col->numero_colegiatura); ?>">
+                                            data-numero="<?php echo formatNumeroColegiatura($col->numero_colegiatura); ?>"
+                                            <?php echo ($col->estado === 'inhabilitado') ? 'title="Colegiado inhabilitado - Puede pagar adelantado para habilitarse"' : ''; ?>>
                                         <i class="fas fa-check-circle me-1"></i> Seleccionar
                                     </button>
                                 </td>
