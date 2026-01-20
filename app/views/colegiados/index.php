@@ -53,6 +53,9 @@
                         <option value="inhabilitado" <?php echo ($filtros['estado'] ?? '') === 'inhabilitado' ? 'selected' : ''; ?>>
                             Inhabilitado
                         </option>
+                        <option value="inactivo_cese" <?php echo ($filtros['estado'] ?? '') === 'inactivo_cese' ? 'selected' : ''; ?>>
+                            Inactivo por Cese
+                        </option>
                     </select>
                 </div>
             </div>
@@ -112,6 +115,10 @@
                                     <?php if ($colegiado->estado === 'habilitado'): ?>
                                         <span class="badge badge-habilitado">
                                             <i class="fas fa-check-circle"></i> Habilitado
+                                        </span>
+                                    <?php elseif ($colegiado->estado === 'inactivo_cese'): ?>
+                                        <span class="badge badge-inactivo-cese">
+                                            <i class="fas fa-user-slash"></i> Inactivo por Cese
                                         </span>
                                     <?php else: ?>
                                         <span class="badge badge-inhabilitado">

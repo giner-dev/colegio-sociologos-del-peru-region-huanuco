@@ -150,25 +150,57 @@ class ColegiadoService{
         return ['success' => false, 'errors' => ['Error al actualizar el colegiado']];
     }
 
-    public function cambiarEstado($id, $nuevoEstado, $motivo, $usuarioId) {
+    public function cambiarEstado($id, $nuevoEstado, $motivo, $usuarioId, $fechaCese = null) {
         $colegiado = $this->colegiadoRepository->findById($id);
-        
+
         if (!$colegiado) {
             return ['success' => false, 'message' => 'Colegiado no encontrado'];
         }
-        
+
         if ($colegiado->estado === $nuevoEstado) {
             return ['success' => false, 'message' => 'El colegiado ya tiene ese estado'];
         }
-        
-        // Cambiar estado
+
+        $estadoAnterior = $colegiado->estado;
+
+        // CASO 1: Cambiar A inactivo_cese
+        if ($nuevoEstado === 'inactivo_cese') {
+            // Pausar programaciones de deudas
+            $this->colegiadoRepository->pausarProgramacionesDeudas($id);
+
+            // Cambiar estado
+            $this->colegiadoRepository->cambiarEstado($id, $nuevoEstado, $motivo, $fechaCese);
+
+            // Registrar en historial
+            $this->registrarCambioEstado($id, $estadoAnterior, $nuevoEstado, $motivo, 'manual', $usuarioId);
+
+            logMessage("Colegiado ID $id cambiado a inactivo_cese - Programaciones pausadas", 'info');
+
+            return ['success' => true, 'message' => 'Estado actualizado. Se pausaron las deudas automáticas.'];
+        }
+
+        // CASO 2: Cambiar DESDE inactivo_cese a habilitado/inhabilitado
+        if ($estadoAnterior === 'inactivo_cese' && ($nuevoEstado === 'habilitado' || $nuevoEstado === 'inhabilitado')) {
+            // Reactivar programaciones
+            $this->colegiadoRepository->reactivarProgramacionesDeudas($id);
+
+            // Cambiar estado
+            $this->colegiadoRepository->cambiarEstado($id, $nuevoEstado, $motivo);
+
+            // Registrar en historial
+            $this->registrarCambioEstado($id, $estadoAnterior, $nuevoEstado, $motivo, 'manual', $usuarioId);
+
+            logMessage("Colegiado ID $id reactivado desde inactivo_cese - Programaciones reactivadas", 'info');
+
+            return ['success' => true, 'message' => 'Estado actualizado. Se reactivaron las deudas automáticas.'];
+        }
+
+        // CASO 3: Cambio normal habilitado <-> inhabilitado (lógica original)
         $this->colegiadoRepository->cambiarEstado($id, $nuevoEstado, $motivo);
-        
-        // Registrar en historial
-        $this->registrarCambioEstado($id, $colegiado->estado, $nuevoEstado, $motivo, 'manual', $usuarioId);
-        
-        logMessage("Estado cambiado para colegiado ID $id: {$colegiado->estado} -> $nuevoEstado", 'info');
-        
+        $this->registrarCambioEstado($id, $estadoAnterior, $nuevoEstado, $motivo, 'manual', $usuarioId);
+
+        logMessage("Estado cambiado para colegiado ID $id: $estadoAnterior -> $nuevoEstado", 'info');
+
         return ['success' => true, 'message' => 'Estado actualizado correctamente'];
     }
 

@@ -169,19 +169,20 @@ class ColegiadoController extends Controller{
         $this->requireAuth();
         $this->requirePermission('colegiados', 'editar');
         $this->validateMethod('POST');
-        
+
         $nuevoEstado = $this->getPost('estado');
         $motivo = $this->getPost('motivo');
+        $fechaCese = $this->getPost('fecha_cese');
         $usuarioId = authUserId();
-        
-        $resultado = $this->colegiadoService->cambiarEstado($id, $nuevoEstado, $motivo, $usuarioId);
-        
+
+        $resultado = $this->colegiadoService->cambiarEstado($id, $nuevoEstado, $motivo, $usuarioId, $fechaCese);
+
         if ($resultado['success']) {
             $this->setSuccess($resultado['message']);
         } else {
             $this->setError($resultado['message']);
         }
-        
+
         $this->redirect(url('colegiados/ver/' . $id));
     }
 

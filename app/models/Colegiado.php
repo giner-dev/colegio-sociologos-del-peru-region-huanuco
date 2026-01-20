@@ -16,6 +16,8 @@ class Colegiado{
     public $observaciones;
     public $fecha_registro;
     public $fecha_actualizacion;
+    public $fecha_cese;
+    public $motivo_cese;
 
     public function __construct($data = null){
         if(!empty($data)){
@@ -23,7 +25,6 @@ class Colegiado{
         }
     }
 
-    // Llena las propiedades del objeto desde un array
     public function hydrate($data){
         foreach ($data as $key => $value) {
             if (property_exists($this, $key)) {
@@ -32,7 +33,6 @@ class Colegiado{
         }
     }
 
-    // Converte el objeto en array
     public function toArray(){
         return[
             'idColegiados' => $this->idColegiados,
@@ -63,7 +63,19 @@ class Colegiado{
         return $this->estado === 'habilitado';
     }
 
-    // Calcula la edad del colegiado
+    public function isInhabilitado(){
+        return $this->estado === 'inhabilitado';
+    }
+
+    public function isInactivoCese(){
+        return $this->estado === 'inactivo_cese';
+    }
+
+    // Verifica si el colegiado está activo (puede generar deudas)
+    public function puedeGenerarDeudas(){
+        return $this->estado === 'habilitado' || $this->estado === 'inhabilitado';
+    }
+
     public function getEdad() {
         if (empty($this->fecha_nacimiento)) {
             return null;
@@ -76,7 +88,6 @@ class Colegiado{
         return $edad->y;
     }
 
-    // Calcula los años de colegiatura
     public function getAniosColegiatura() {
         if (empty($this->fecha_colegiatura)) {
             return null;
@@ -87,5 +98,24 @@ class Colegiado{
         $diff = $hoy->diff($fechaCol);
         
         return $diff->y;
+    }
+
+    // Retorna el nombre amigable del estado
+    public function getEstadoTexto() {
+        $estados = [
+            'habilitado' => 'Habilitado',
+            'inhabilitado' => 'Inhabilitado',
+            'inactivo_cese' => 'Inactivo por Cese'
+        ];
+        return $estados[$this->estado] ?? 'Desconocido';
+    }
+
+    public function getEstadoBadgeClass() {
+        $clases = [
+            'habilitado' => 'badge-habilitado',
+            'inhabilitado' => 'badge-inhabilitado',
+            'inactivo_cese' => 'badge-inactivo-cese'
+        ];
+        return $clases[$this->estado] ?? 'badge-secondary';
     }
 }

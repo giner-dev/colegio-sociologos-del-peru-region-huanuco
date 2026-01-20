@@ -484,6 +484,24 @@ function initUpperCaseInputs() {
 }
 
 // ===================================
+// ADVERTENCIA PARA ESTADO INACTIVO POR CESE
+// ===================================
+document.addEventListener('DOMContentLoaded', function() {
+    const selectEstado = document.querySelector('select[name="estado"]');
+    const alertInactivoCese = document.getElementById('alertInactivoCese');
+    
+    if (selectEstado && alertInactivoCese) {
+        selectEstado.addEventListener('change', function() {
+            if (this.value === 'inactivo_cese') {
+                alertInactivoCese.style.display = 'block';
+            } else {
+                alertInactivoCese.style.display = 'none';
+            }
+        });
+    }
+});
+
+// ===================================
 // EXPORTAR FUNCIONES GLOBALES
 // ===================================
 window.showLoadingModal = showLoadingModal;

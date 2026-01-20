@@ -45,6 +45,10 @@
                         <span class="badge bg-success status-badge-large">
                             <i class="fas fa-check-circle"></i> HABILITADO
                         </span>
+                    <?php elseif ($colegiado->estado === 'inactivo_cese'): ?>
+                        <span class="badge badge-inactivo-cese status-badge-large">
+                            <i class="fas fa-user-slash"></i> INACTIVO POR CESE
+                        </span>
                     <?php else: ?>
                         <span class="badge bg-danger status-badge-large">
                             <i class="fas fa-times-circle"></i> INHABILITADO
@@ -119,6 +123,26 @@
     </div>
 </div>
 
+<!-- ALERTA SI ESTÁ EN CESE -->
+<?php if ($colegiado->isInactivoCese()): ?>
+<div class="alert alert-secondary">
+    <h5 class="alert-heading">
+        <i class="fas fa-user-slash me-2"></i>
+        Estado: Inactivo por Cese
+    </h5>
+    <div class="row">
+        <div class="col-md-4">
+            <strong>Fecha de Cese:</strong><br>
+            <?php echo $colegiado->fecha_cese ? formatDate($colegiado->fecha_cese) : 'No registrada'; ?>
+        </div>
+        <div class="col-md-8">
+            <strong>Motivo:</strong><br>
+            <?php echo e($colegiado->motivo_cese ?? 'Sin motivo registrado'); ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Cambiar Estado -->
 <?php if (hasPermission('colegiados', 'editar')): ?>
 <div class="card mb-4">
@@ -130,29 +154,84 @@
             <div class="row">
                 <div class="col-md-3">
                     <label class="form-label">Nuevo Estado</label>
-                    <select name="estado" class="form-select" required>
+                    <select name="estado" id="selectEstado" class="form-select" required>
                         <option value="habilitado" <?php echo $colegiado->estado === 'habilitado' ? 'selected' : ''; ?>>
                             Habilitado
                         </option>
                         <option value="inhabilitado" <?php echo $colegiado->estado === 'inhabilitado' ? 'selected' : ''; ?>>
                             Inhabilitado
                         </option>
+                        <option value="inactivo_cese" <?php echo $colegiado->estado === 'inactivo_cese' ? 'selected' : ''; ?>>
+                            Inactivo por Cese
+                        </option>
                     </select>
                 </div>
-                <div class="col-md-7">
+                
+                <!-- Campo fecha de cese (solo visible si se selecciona inactivo_cese) -->
+                <div class="col-md-3" id="grupoFechaCese" style="display: none;">
+                    <label class="form-label required">Fecha de Cese</label>
+                    <input type="date" name="fecha_cese" id="inputFechaCese" class="form-control">
+                </div>
+                
+                <div class="col-md-4" id="colMotivo">
                     <label class="form-label">Motivo del Cambio</label>
-                    <input type="text" name="motivo" class="form-control" required 
+                    <input type="text" name="motivo" id="inputMotivo" class="form-control" required 
                            placeholder="Indique el motivo del cambio de estado">
                 </div>
+                
                 <div class="col-md-2 d-flex align-items-end">
                     <button type="submit" class="btn btn-primary w-100">
                         <i class="fas fa-save"></i> Cambiar
                     </button>
                 </div>
             </div>
+            
+            <!-- Advertencia para inactivo_cese -->
+            <div class="alert alert-warning mt-3" id="alertInactivoCese" style="display: none;">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                <strong>Advertencia:</strong> Al cambiar a "Inactivo por Cese", se pausarán todas las programaciones de deudas automáticas para este colegiado.
+            </div>
+            
+            <!-- Info para reactivación -->
+            <?php if ($colegiado->isInactivoCese()): ?>
+            <div class="alert alert-info mt-3">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Nota:</strong> Al cambiar a "Habilitado" o "Inhabilitado", se reactivarán las programaciones de deudas automáticas que fueron pausadas.
+            </div>
+            <?php endif; ?>
         </form>
     </div>
 </div>
+
+<script>
+// Mostrar/ocultar campo fecha_cese según estado seleccionado
+document.addEventListener('DOMContentLoaded', function() {
+    const selectEstado = document.getElementById('selectEstado');
+    const grupoFechaCese = document.getElementById('grupoFechaCese');
+    const inputFechaCese = document.getElementById('inputFechaCese');
+    const alertInactivoCese = document.getElementById('alertInactivoCese');
+    const colMotivo = document.getElementById('colMotivo');
+    
+    if (selectEstado) {
+        selectEstado.addEventListener('change', function() {
+            if (this.value === 'inactivo_cese') {
+                grupoFechaCese.style.display = 'block';
+                inputFechaCese.setAttribute('required', 'required');
+                alertInactivoCese.style.display = 'block';
+                colMotivo.className = 'col-md-4';
+            } else {
+                grupoFechaCese.style.display = 'none';
+                inputFechaCese.removeAttribute('required');
+                alertInactivoCese.style.display = 'none';
+                colMotivo.className = 'col-md-6';
+            }
+        });
+        
+        // Trigger inicial
+        selectEstado.dispatchEvent(new Event('change'));
+    }
+});
+</script>
 <?php endif; ?>
 
 <!-- Historial de Pagos -->
@@ -353,14 +432,20 @@
                                 </td>
                                 
                                 <td data-label="Estado Anterior">
-                                    <span class="badge <?php echo $cambio['estado_anterior'] === 'habilitado' ? 'bg-success' : 'bg-danger'; ?>">
-                                        <?php echo ucfirst(e($cambio['estado_anterior'])); ?>
+                                    <span class="badge <?php 
+                                        echo $cambio['estado_anterior'] === 'habilitado' ? 'bg-success' : 
+                                            ($cambio['estado_anterior'] === 'inactivo_cese' ? 'badge-inactivo-cese' : 'bg-danger'); 
+                                    ?>">
+                                        <?php echo ucfirst(str_replace('_', ' ', e($cambio['estado_anterior']))); ?>
                                     </span>
                                 </td>
                                 
                                 <td data-label="Estado Nuevo">
-                                    <span class="badge <?php echo $cambio['estado_nuevo'] === 'habilitado' ? 'bg-success' : 'bg-danger'; ?>">
-                                        <?php echo ucfirst(e($cambio['estado_nuevo'])); ?>
+                                    <span class="badge <?php 
+                                        echo $cambio['estado_nuevo'] === 'habilitado' ? 'bg-success' : 
+                                            ($cambio['estado_nuevo'] === 'inactivo_cese' ? 'badge-inactivo-cese' : 'bg-danger'); 
+                                    ?>">
+                                        <?php echo ucfirst(str_replace('_', ' ', e($cambio['estado_nuevo']))); ?>
                                     </span>
                                 </td>
                                 

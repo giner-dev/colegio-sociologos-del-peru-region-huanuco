@@ -265,17 +265,36 @@ class ColegiadoRepository{
     }
 
     // cambiar el estado de un colegiado
-    public function cambiarEstado($id, $nuevoEstado, $motivo = null){
+    public function cambiarEstado($id, $nuevoEstado, $motivo = null, $fechaCese = null){
+        // Si cambia a inactivo_cese
+        if ($nuevoEstado === 'inactivo_cese') {
+            $sql = "UPDATE colegiados SET 
+                    estado = :estado, 
+                    fecha_cese = :fecha_cese,
+                    motivo_cese = :motivo,
+                    fecha_cambio_estado = NOW() 
+                WHERE idColegiados = :id";
+
+            return $this->db->execute($sql, [
+                'id' => $id,
+                'estado' => $nuevoEstado,
+                'fecha_cese' => $fechaCese,
+                'motivo' => $motivo
+            ]);
+        }
+
+        // Para habilitado/inhabilitado (lógica original)
         $sql = "UPDATE colegiados SET 
                 estado = :estado, 
                 motivo_inhabilitacion = :motivo,
                 fecha_cambio_estado = NOW() 
             WHERE idColegiados = :id";
+
         return $this->db->execute($sql, [
-                'id' => $id,
-                'estado' => $nuevoEstado,
-                'motivo' => $motivo ?? null
-            ]);
+            'id' => $id,
+            'estado' => $nuevoEstado,
+            'motivo' => $motivo ?? null
+        ]);
     }
 
     // actualizar la foto de un colegiado
@@ -421,5 +440,62 @@ class ColegiadoRepository{
                 ORDER BY d.fecha_vencimiento ASC";
 
         return $this->db->query($sql, ['id' => $idColegiado]);
+    }
+
+    // Pausa programaciones de deudas
+    public function pausarProgramacionesDeudas($colegiadoId) {
+        $db = Database::getInstance();
+
+        $sql = "UPDATE programacion_deudas 
+                SET estado = 'pausada',
+                    observaciones = CONCAT(
+                        COALESCE(observaciones, ''), 
+                        ' | Pausada automáticamente por cambio a inactivo_cese el ',
+                        NOW()
+                    )
+                WHERE colegiado_id = :id 
+                AND estado = 'activa'";
+
+        try {
+            $db->execute($sql, ['id' => $colegiadoId]);
+            logMessage("Programaciones pausadas para colegiado ID $colegiadoId", 'info');
+        } catch (Exception $e) {
+            logMessage("Error al pausar programaciones: " . $e->getMessage(), 'error');
+        }
+    }
+
+    // Reactiva programaciones pausadas
+    public function reactivarProgramacionesDeudas($colegiadoId) {
+        $db = Database::getInstance();
+        
+        $sql = "UPDATE programacion_deudas 
+                SET estado = 'activa',
+                    observaciones = CONCAT(
+                        COALESCE(observaciones, ''), 
+                        ' | Reactivada automáticamente el ',
+                        NOW()
+                    )
+                WHERE colegiado_id = :id 
+                AND estado = 'pausada'";
+        
+        try {
+            $db->execute($sql, ['id' => $colegiadoId]);
+            logMessage("Programaciones reactivadas para colegiado ID $colegiadoId", 'info');
+        } catch (Exception $e) {
+            logMessage("Error al reactivar programaciones: " . $e->getMessage(), 'error');
+        }
+    }
+    
+    // Obtiene colegiados en estado cese
+    public function findInactivosCese() {
+        $sql = "SELECT * FROM colegiados WHERE estado = 'inactivo_cese' ORDER BY apellido_paterno ASC";
+        $results = $this->db->query($sql);
+        
+        $colegiados = [];
+        foreach ($results as $row) {
+            $colegiados[] = new Colegiado($row);
+        }
+        
+        return $colegiados;
     }
 }

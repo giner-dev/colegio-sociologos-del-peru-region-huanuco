@@ -709,6 +709,16 @@
     }
 }
 
+.badge-inactivo-cese {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    color: white;
+}
+
+.status-badge-large.badge-inactivo-cese {
+    font-size: 1.1rem;
+    padding: 10px 20px;
+}
+
 /* ===================================
    RESPONSIVE - MÓVILES (≤ 768px)
    =================================== */

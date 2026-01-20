@@ -51,6 +51,16 @@ class DeudaService {
 
     // Registra una nueva deuda
     public function registrarDeuda($datos) {
+        
+        $colegiado = $this->colegiadoRepository->findById($datos['colegiado_id']);
+
+        if (!$colegiado->puedeGenerarDeudas()) {
+            return [
+                'success' => false, 
+                'errors' => ['No se pueden registrar deudas para colegiados con estado: ' . $colegiado->getEstadoTexto()]
+            ];
+        }
+
         $errores = $this->validarDatos($datos);
         if (!empty($errores)) {
             return ['success' => false, 'errors' => $errores];
