@@ -152,9 +152,19 @@ class ReporteService {
     }
 
     // REPORTE DE INHABILITADOS
-    public function obtenerReporteInhabilitados($page = 1, $perPage = 50) {
+    public function obtenerReporteInhabilitados($page = 1, $perPage = 50, $filtroEstado = null) {
         $offset = ($page - 1) * $perPage;
-        
+
+        // Construir WHERE dinámico según filtro
+        $whereEstado = "WHERE estado IN ('inhabilitado', 'inactivo_cese')";
+        $params = ['limit' => $perPage, 'offset' => $offset];
+
+        if ($filtroEstado === 'inhabilitado') {
+            $whereEstado = "WHERE estado = 'inhabilitado'";
+        } elseif ($filtroEstado === 'inactivo_cese') {
+            $whereEstado = "WHERE estado = 'inactivo_cese'";
+        }
+
         $sql = "SELECT 
                     numero_colegiatura,
                     dni,
@@ -162,27 +172,28 @@ class ReporteService {
                     correo,
                     telefono,
                     fecha_colegiatura,
+                    estado,
                     motivo_inhabilitacion,
+                    motivo_cese,
+                    fecha_cese,
                     fecha_cambio_estado
                 FROM colegiados
-                WHERE estado = 'inhabilitado'
+                $whereEstado
                 ORDER BY fecha_cambio_estado DESC
                 LIMIT :limit OFFSET :offset";
-        
-        $inhabilitados = $this->db->query($sql, [
-            'limit' => $perPage,
-            'offset' => $offset
-        ]);
-        
-        $sqlCount = "SELECT COUNT(*) as total FROM colegiados WHERE estado = 'inhabilitado'";
+
+        $inhabilitados = $this->db->query($sql, $params);
+
+        $sqlCount = "SELECT COUNT(*) as total FROM colegiados $whereEstado";
         $total = $this->db->queryOne($sqlCount);
-        
+
         return [
             'inhabilitados' => $inhabilitados,
             'total' => $total['total'],
             'page' => $page,
             'perPage' => $perPage,
-            'totalPages' => ceil($total['total'] / $perPage)
+            'totalPages' => ceil($total['total'] / $perPage),
+            'filtroEstado' => $filtroEstado
         ];
     }
 
@@ -517,7 +528,16 @@ class ReporteService {
     }
 
     // EXPORTAR A EXCEL - INHABILITADOS
-    public function exportarInhabilitadosExcel() {
+    public function exportarInhabilitadosExcel($filtroEstado = null) {
+        // Construir WHERE dinámico
+        $whereEstado = "WHERE estado IN ('inhabilitado', 'inactivo_cese')";
+        
+        if ($filtroEstado === 'inhabilitado') {
+            $whereEstado = "WHERE estado = 'inhabilitado'";
+        } elseif ($filtroEstado === 'inactivo_cese') {
+            $whereEstado = "WHERE estado = 'inactivo_cese'";
+        }
+        
         $sql = "SELECT 
                     numero_colegiatura,
                     dni,
@@ -525,10 +545,13 @@ class ReporteService {
                     correo,
                     telefono,
                     fecha_colegiatura,
+                    estado,
                     motivo_inhabilitacion,
+                    motivo_cese,
+                    fecha_cese,
                     fecha_cambio_estado
                 FROM colegiados
-                WHERE estado = 'inhabilitado'
+                $whereEstado
                 ORDER BY fecha_cambio_estado DESC";
         
         $inhabilitados = $this->db->query($sql);
@@ -538,16 +561,26 @@ class ReporteService {
         
         $sheet->setTitle('Inhabilitados');
         
-        $sheet->setCellValue('A1', 'COLEGIADOS INHABILITADOS');
-        $sheet->mergeCells('A1:H1');
+        $sheet->setCellValue('A1', 'COLEGIADOS INHABILITADOS / INACTIVOS POR CESE');
+        $sheet->mergeCells('A1:I1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         
         $row = 3;
-        $headers = ['N° Colegiatura', 'DNI', 'Nombre Completo', 'Correo', 'Teléfono', 'Fecha Colegiatura', 'Motivo', 'Fecha Cambio'];
+        $headers = [
+            'N° Colegiatura', 
+            'DNI', 
+            'Nombre Completo', 
+            'Correo', 
+            'Teléfono', 
+            'Fecha Colegiatura', 
+            'Estado',
+            'Motivo/Observación', 
+            'Fecha Cambio'
+        ];
         $sheet->fromArray($headers, null, 'A' . $row);
         
-        $headerStyle = $sheet->getStyle('A' . $row . ':H' . $row);
+        $headerStyle = $sheet->getStyle('A' . $row . ':I' . $row);
         $headerStyle->getFont()->setBold(true);
         $headerStyle->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('B91D22');
         $headerStyle->getFont()->getColor()->setRGB('FFFFFF');
@@ -560,12 +593,31 @@ class ReporteService {
             $sheet->setCellValue('D' . $row, $colegiado['correo'] ?? '-');
             $sheet->setCellValue('E' . $row, $colegiado['telefono'] ?? '-');
             $sheet->setCellValue('F' . $row, date('d/m/Y', strtotime($colegiado['fecha_colegiatura'])));
-            $sheet->setCellValue('G' . $row, $colegiado['motivo_inhabilitacion'] ?? '-');
-            $sheet->setCellValue('H' . $row, $colegiado['fecha_cambio_estado'] ? date('d/m/Y', strtotime($colegiado['fecha_cambio_estado'])) : '-');
+            
+            // Determinar texto de estado
+            $estadoTexto = 'Inhabilitado';
+            if ($colegiado['estado'] === 'inactivo_cese') {
+                $estadoTexto = 'Inactivo por Cese';
+            }
+            $sheet->setCellValue('G' . $row, $estadoTexto);
+            
+            // Determinar motivo según estado
+            $motivo = '-';
+            if ($colegiado['estado'] === 'inactivo_cese') {
+                $motivo = $colegiado['motivo_cese'] ?? '-';
+                if ($colegiado['fecha_cese']) {
+                    $motivo .= ' (Fecha cese: ' . date('d/m/Y', strtotime($colegiado['fecha_cese'])) . ')';
+                }
+            } else {
+                $motivo = $colegiado['motivo_inhabilitacion'] ?? '-';
+            }
+            $sheet->setCellValue('H' . $row, $motivo);
+            
+            $sheet->setCellValue('I' . $row, $colegiado['fecha_cambio_estado'] ? date('d/m/Y', strtotime($colegiado['fecha_cambio_estado'])) : '-');
             $row++;
         }
         
-        foreach (range('A', 'H') as $col) {
+        foreach (range('A', 'I') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
         

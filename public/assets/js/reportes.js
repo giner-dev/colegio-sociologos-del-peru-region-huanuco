@@ -459,7 +459,6 @@ window.exportarExcel = function() {
         return;
     }
     
-    // Mostrar loading
     showLoadingExport();
     
     let url = `reportes/exportar-excel?tipo=${tipo}`;
@@ -468,13 +467,19 @@ window.exportarExcel = function() {
         url += `&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`;
     }
     
-    // Crear iframe oculto para descargar
+    // agregar filtro de estado para inhabilitados
+    if (tipo === 'inhabilitados') {
+        const filtroEstado = document.querySelector('select[name="estado"]')?.value;
+        if (filtroEstado) {
+            url += `&estado=${filtroEstado}`;
+        }
+    }
+    
     const iframe = document.createElement('iframe');
     iframe.style.display = 'none';
     iframe.src = getAppUrl(url);
     document.body.appendChild(iframe);
     
-    // Remover iframe y loading después de 3 segundos
     setTimeout(() => {
         document.body.removeChild(iframe);
         hideLoadingExport();

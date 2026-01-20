@@ -73,7 +73,7 @@
                         <div class="d-flex align-items-center">
                             <i class="fas fa-user-times text-danger me-3" style="font-size: 1.5rem;"></i>
                             <div>
-                                <h6 class="mb-0">Colegiados Inhabilitados</h6>
+                                <h6 class="mb-0">Colegiados Inhabilitados / Inactivos por Cese</h6>
                                 <small class="text-muted">Listado de colegiados inactivos</small>
                             </div>
                         </div>

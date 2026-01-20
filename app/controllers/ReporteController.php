@@ -86,12 +86,13 @@ class ReporteController extends Controller {
         
         $page = (int)($this->getQuery('page') ?? 1);
         $perPage = 50;
+        $filtroEstado = $this->getQuery('estado');
         
-        $datos = $this->reporteService->obtenerReporteInhabilitados($page, $perPage);
+        $datos = $this->reporteService->obtenerReporteInhabilitados($page, $perPage, $filtroEstado);
         
         $this->render('reportes/inhabilitados', array_merge($datos, [
             'active_menu' => 'reportes',
-            'titulo' => 'Colegiados Inhabilitados'
+            'titulo' => 'Colegiados Inhabilitados / Inactivos por Cese'
         ]));
     }
 
@@ -113,14 +114,15 @@ class ReporteController extends Controller {
     // EXPORTAR A EXCEL
     public function exportarExcel() {
         $this->requirePermission('reportes', 'ver');
-        
+
         $tipo = $this->getQuery('tipo');
         $fechaInicio = $this->getQuery('fecha_inicio');
         $fechaFin = $this->getQuery('fecha_fin');
-        
+        $filtroEstado = $this->getQuery('estado');
+
         try {
             $filename = null;
-            
+
             switch ($tipo) {
                 case 'ingresos':
                     $filename = $this->reporteService->exportarIngresosExcel($fechaInicio, $fechaFin);
@@ -135,7 +137,8 @@ class ReporteController extends Controller {
                     $filename = $this->reporteService->exportarHabilitadosExcel();
                     break;
                 case 'inhabilitados':
-                    $filename = $this->reporteService->exportarInhabilitadosExcel();
+                    // Pasar filtro de estado al exportar
+                    $filename = $this->reporteService->exportarInhabilitadosExcel($filtroEstado);
                     break;
                 case 'morosos':
                     $filename = $this->reporteService->exportarMorososExcel();
@@ -143,7 +146,7 @@ class ReporteController extends Controller {
                 default:
                     throw new Exception('Tipo de reporte no válido');
             }
-            
+                
             if ($filename) {
                 $filepath = basePath('public/temp/' . $filename);
                 
@@ -152,16 +155,16 @@ class ReporteController extends Controller {
                     header('Content-Disposition: attachment; filename="' . $filename . '"');
                     header('Content-Length: ' . filesize($filepath));
                     header('Cache-Control: max-age=0');
-                    
+
                     readfile($filepath);
-                    
+
                     unlink($filepath);
                     exit();
                 }
             }
-            
+                
             throw new Exception('Error al generar el archivo Excel');
-            
+                
         } catch (Exception $e) {
             logMessage("Error al exportar Excel: " . $e->getMessage(), 'error');
             $this->setError('Error al generar el reporte: ' . $e->getMessage());
