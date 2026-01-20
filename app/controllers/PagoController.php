@@ -553,4 +553,96 @@ class PagoController extends Controller {
         
         $this->redirect(url('pagos/metodos'));
     }
+
+
+    public function registrarAdelantado() {
+        $this->requireAuth();
+        $this->requirePermission('pagos', 'crear');
+        
+        $opciones = $this->pagoService->obtenerOpcionesPago();
+        
+        $deudaRepo = new DeudaRepository();
+        $colegiadosRepo = new ColegiadoRepository();
+        
+        $sql = "SELECT DISTINCT p.colegiado_id 
+                FROM programacion_deudas p
+                WHERE p.estado = 'activa'
+                AND (p.fecha_fin IS NULL OR p.fecha_fin >= CURDATE())";
+        
+        $db = Database::getInstance();
+        $results = $db->query($sql);
+        
+        $colegiados = [];
+        foreach ($results as $row) {
+            $colegiado = $colegiadosRepo->findById($row['colegiado_id']);
+            if ($colegiado) {
+                $colegiados[] = $colegiado;
+            }
+        }
+        
+        $this->render('pagos/registrar_adelantado', [
+            'metodos' => $opciones['metodos'],
+            'colegiados' => $colegiados,
+            'active_menu' => 'pagos',
+            'titulo' => 'Registrar Pago Adelantado'
+        ]);
+    }
+    
+    public function apiProgramaciones($colegiadoId) {
+        $this->requireAuth();
+        $this->requirePermission('pagos', 'ver');
+        
+        try {
+            $programaciones = $this->pagoService->obtenerProgramacionesPorColegiado($colegiadoId);
+            
+            $this->json([
+                'success' => true,
+                'programaciones' => $programaciones
+            ]);
+            
+        } catch (Exception $e) {
+            $this->json([
+                'success' => false,
+                'message' => 'Error al cargar programaciones: ' . $e->getMessage()
+            ]);
+        }
+    }
+    
+    public function guardarAdelantado() {
+        $this->requireAuth();
+        $this->requirePermission('pagos', 'crear');
+        $this->validateMethod('POST');
+        
+        $datos = [
+            'colegiado_id' => $this->getPost('colegiado_id'),
+            'programacion_id' => $this->getPost('programacion_id'),
+            'meses_adelantado' => $this->getPost('meses_adelantado'),
+            'monto' => $this->getPost('monto'),
+            'fecha_pago' => $this->getPost('fecha_pago'),
+            'metodo_pago_id' => $this->getPost('metodo_pago_id'),
+            'numero_comprobante' => $this->getPost('numero_comprobante'),
+            'observaciones' => $this->getPost('observaciones')
+        ];
+        
+        if (!empty($_FILES['archivo_comprobante']['name'])) {
+            $resultadoArchivo = $this->pagoService->subirComprobante($_FILES['archivo_comprobante']);
+            if ($resultadoArchivo['success']) {
+                $datos['archivo_comprobante'] = $resultadoArchivo['ruta'];
+            } else {
+                $this->setError($resultadoArchivo['message']);
+                $this->redirect(url('pagos/registrar-adelantado'));
+                return;
+            }
+        }
+        
+        $resultado = $this->pagoService->registrarPagoAdelantado($datos, authUserId());
+        
+        if ($resultado['success']) {
+            $this->setSuccess('Pago adelantado registrado correctamente. Se pagaron ' . $resultado['periodos_pagados'] . ' periodo(s).');
+            $this->redirect(url('pagos/ver/' . $resultado['id']));
+        } else {
+            $this->setError('Error: ' . implode(', ', $resultado['errors']));
+            $this->redirect(url('pagos/registrar-adelantado'));
+        }
+    }
 }

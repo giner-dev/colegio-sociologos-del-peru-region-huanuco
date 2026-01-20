@@ -67,6 +67,10 @@ $router->post('/pagos/confirmar/{id}', 'PagoController@confirmar');
 $router->get('/pagos/api-deudas-pendientes/{id}', 'PagoController@apiDeudasPendientes');
 $router->get('/pagos/api-metodos', 'PagoController@apiMetodos');
 
+$router->get('/pagos/registrar-adelantado', 'PagoController@registrarAdelantado');
+$router->post('/pagos/guardar-adelantado', 'PagoController@guardarAdelantado');
+$router->get('/pagos/api-programaciones/{id}', 'PagoController@apiProgramaciones');
+
 // Gestión de Conceptos (Solo Admin)
 $router->get('/pagos/conceptos', 'PagoController@conceptos');
 $router->get('/pagos/conceptos/crear', 'PagoController@crearConcepto');
@@ -95,6 +99,8 @@ $router->post('/deudas/eliminar/{id}', 'DeudaController@eliminar');
 $router->get('/deudas/morosos', 'DeudaController@morosos');
 $router->get('/deudas/api/colegiados', 'DeudaController@apiColegiadosSearch');
 $router->get('/deudas/api-deudas-pendientes/{id}', 'DeudaController@apiDeudasPendientes');
+$router->get('/deudas/api-deudas-multiples/{id}', 'DeudaController@apiDeudasPendientesMultiples');
+$router->get('/deudas/api-verificar-programacion/{colegiadoId}/{conceptoId}', 'DeudaController@apiVerificarProgramacion');
 $router->post('/deudas/cancelar/{id}', 'DeudaController@cancelar');
 
 // ============================================

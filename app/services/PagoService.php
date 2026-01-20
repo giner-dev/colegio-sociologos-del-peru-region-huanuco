@@ -241,6 +241,10 @@ class PagoService {
         ];
     }
 
+    public function obtenerProgramacionesPorColegiado($colegiadoId) {
+        return $this->pagoRepository->getProgramacionesActivas($colegiadoId);
+    }
+
     // Valida datos del pago
     private function validarDatos($datos) {
         $errores = [];
@@ -537,5 +541,180 @@ class PagoService {
         }
         
         return ['success' => false, 'message' => 'Error al eliminar el método'];
+    }
+
+
+    private function calcularPeriodosAdelantados($programacion, $mesesAPagar) {
+        $periodos = [];
+        $fechaInicio = new DateTime($programacion['proxima_generacion'] ?? 'now');
+
+        $incremento = 1;
+        switch ($programacion['frecuencia']) {
+            case 'mensual':
+                $incremento = 1;
+                break;
+            case 'trimestral':
+                $incremento = 3;
+                break;
+            case 'semestral':
+                $incremento = 6;
+                break;
+            case 'anual':
+                $incremento = 12;
+                break;
+        }
+            
+        $periodosNecesarios = ceil($mesesAPagar / $incremento);
+            
+        for ($i = 0; $i < $periodosNecesarios; $i++) {
+            $fecha = clone $fechaInicio;
+            $fecha->modify("+{$i} {$incremento} months");
+            $periodos[] = $fecha->format('Y-m');
+        }
+            
+        return $periodos;
+    }
+
+    public function registrarPagoAdelantado($datos, $usuarioId) {
+        $errores = $this->validarDatosAdelantado($datos);
+        if (!empty($errores)) {
+            return ['success' => false, 'errors' => $errores];
+        }
+                
+        $programacion = $this->pagoRepository->getProgramacionesActivas($datos['colegiado_id']);
+                
+        $programacionSeleccionada = null;
+        foreach ($programacion as $prog) {
+            if ($prog['idProgramacion'] == $datos['programacion_id']) {
+                $programacionSeleccionada = $prog;
+                break;
+            }
+        }
+                
+        if (!$programacionSeleccionada) {
+            return ['success' => false, 'errors' => ['Programación no encontrada']];
+        }
+                
+        $mesesAPagar = (int)$datos['meses_adelantado'];
+        $montoPorPeriodo = (float)$programacionSeleccionada['monto'];
+        $montoTotal = $montoPorPeriodo * $mesesAPagar;
+                
+        if ((float)$datos['monto'] < $montoTotal) {
+            return ['success' => false, 'errors' => ['El monto debe cubrir al menos ' . $mesesAPagar . ' periodo(s). Total requerido: S/ ' . number_format($montoTotal, 2)]];
+        }
+                
+        $periodos = $this->calcularPeriodosAdelantados($programacionSeleccionada, $mesesAPagar);
+                
+        $this->db->beginTransaction();
+                
+        try {
+            $deudaIdReferencia = null;
+                
+            foreach ($periodos as $periodo) {
+                $descripcion = $programacionSeleccionada['concepto_nombre'] . ' - Periodo ' . $periodo;
+                
+                $datosDeuda = [
+                    'colegiado_id' => $datos['colegiado_id'],
+                    'concepto_id' => $programacionSeleccionada['concepto_id'],
+                    'concepto_manual' => null,
+                    'es_deuda_manual' => 0,
+                    'descripcion_deuda' => $descripcion,
+                    'monto_esperado' => $montoPorPeriodo,
+                    'fecha_generacion' => date('Y-m-d'),
+                    'fecha_vencimiento' => $periodo . '-' . str_pad($programacionSeleccionada['dia_vencimiento'], 2, '0', STR_PAD_LEFT),
+                    'fecha_maxima_pago' => null,
+                    'estado' => 'pendiente',
+                    'origen' => 'recurrente',
+                    'usuario_generador_id' => $usuarioId,
+                    'observaciones' => 'Generada por pago adelantado'
+                ];
+                
+                $deudaId = $this->deudaRepository->create($datosDeuda);
+                
+                if (!$deudaId) {
+                    throw new Exception("Error al generar deuda para periodo {$periodo}");
+                }
+                
+                if ($deudaIdReferencia === null) {
+                    $deudaIdReferencia = $deudaId;
+                }
+                
+                $this->deudaRepository->actualizarMontoPagado($deudaId, $montoPorPeriodo);
+            }
+                
+            $datosPago = [
+                'colegiado_id' => $datos['colegiado_id'],
+                'deuda_id' => $deudaIdReferencia,
+                'monto' => $datos['monto'],
+                'fecha_pago' => $datos['fecha_pago'],
+                'metodo_pago_id' => $datos['metodo_pago_id'],
+                'numero_comprobante' => $datos['numero_comprobante'] ?? null,
+                'archivo_comprobante' => $datos['archivo_comprobante'] ?? null,
+                'estado' => 'confirmado',
+                'observaciones' => 'Pago adelantado por ' . $mesesAPagar . ' periodo(s): ' . implode(', ', $periodos),
+                'usuario_registro_id' => $usuarioId,
+                'es_pago_adelantado' => true,
+                'periodo_adelantado' => implode(',', $periodos)
+            ];
+                
+            $pagoId = $this->pagoRepository->create($datosPago);
+                
+            if (!$pagoId) {
+                throw new Exception("Error al registrar el pago");
+            }
+                
+            $sqlUpdateProgramacion = "UPDATE programacion_deudas 
+                                      SET ultima_generacion = CURDATE(),
+                                          proxima_generacion = DATE_ADD(CURDATE(), INTERVAL :meses MONTH)
+                                      WHERE idProgramacion = :id";
+
+            $this->db->execute($sqlUpdateProgramacion, [
+                'meses' => $mesesAPagar,
+                'id' => $programacionSeleccionada['idProgramacion']
+            ]);
+                
+            $this->actualizarEstadoColegiado($datos['colegiado_id']);
+                
+            $this->db->commit();
+                
+            logMessage("Pago adelantado registrado: ID {$pagoId} - {$mesesAPagar} periodos - Monto: {$datos['monto']}", 'info');
+                
+            return ['success' => true, 'id' => $pagoId, 'periodos_pagados' => count($periodos)];
+                
+        } catch (Exception $e) {
+            $this->db->rollback();
+            logMessage("Error al registrar pago adelantado: " . $e->getMessage(), 'error');
+            return ['success' => false, 'errors' => ['Error: ' . $e->getMessage()]];
+        }
+    }
+
+    private function validarDatosAdelantado($datos) {
+        $errores = [];
+                
+        if (empty($datos['colegiado_id'])) {
+            $errores[] = 'Debe seleccionar un colegiado';
+        }
+                
+        if (empty($datos['programacion_id'])) {
+            $errores[] = 'Debe seleccionar una programación recurrente';
+        }
+                
+        if (empty($datos['meses_adelantado']) || $datos['meses_adelantado'] < 1) {
+            $errores[] = 'Debe especificar cuántos meses desea pagar por adelantado';
+        }
+                
+        if (empty($datos['monto']) || $datos['monto'] <= 0) {
+            $errores[] = 'El monto debe ser mayor a 0';
+        }
+                
+        if (empty($datos['fecha_pago'])) {
+            $errores[] = 'La fecha de pago es obligatoria';
+        }
+                
+        if (empty($datos['metodo_pago_id'])) {
+            $errores[] = 'Debe seleccionar un método de pago';
+        }
+                
+        return $errores;
     }
 }

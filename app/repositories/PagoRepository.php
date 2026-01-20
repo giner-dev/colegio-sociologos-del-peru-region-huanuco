@@ -171,8 +171,6 @@ class PagoRepository {
 
     // 🔧 CORREGIDO: Crea un nuevo pago (ERROR SQL SOLUCIONADO)
     public function create($data) {
-        // ✅ CORRECCIÓN: Eliminar fecha_registro_pago duplicado
-        // fecha_registro ya se maneja con DEFAULT CURRENT_TIMESTAMP
         $sql = "INSERT INTO pagos (
                     colegiado_id, 
                     deuda_id, 
@@ -183,7 +181,9 @@ class PagoRepository {
                     archivo_comprobante,
                     estado, 
                     observaciones,
-                    usuario_registro_id
+                    usuario_registro_id,
+                    es_pago_adelantado,
+                    periodo_adelantado
                 ) VALUES (
                     :colegiado_id, 
                     :deuda_id, 
@@ -194,10 +194,11 @@ class PagoRepository {
                     :archivo_comprobante,
                     :estado, 
                     :observaciones,
-                    :usuario_registro_id
+                    :usuario_registro_id,
+                    :es_pago_adelantado,
+                    :periodo_adelantado
                 )";
-        
-        // ✅ Preparar parámetros sin fecha_registro_pago
+
         $params = [
             'colegiado_id' => $data['colegiado_id'],
             'deuda_id' => $data['deuda_id'],
@@ -208,9 +209,11 @@ class PagoRepository {
             'archivo_comprobante' => $data['archivo_comprobante'] ?? null,
             'estado' => $data['estado'] ?? 'registrado',
             'observaciones' => $data['observaciones'] ?? null,
-            'usuario_registro_id' => $data['usuario_registro_id']
+            'usuario_registro_id' => $data['usuario_registro_id'],
+            'es_pago_adelantado' => $data['es_pago_adelantado'] ?? false,
+            'periodo_adelantado' => $data['periodo_adelantado'] ?? null
         ];
-        
+
         return $this->db->insert($sql, $params);
     }
 
@@ -557,5 +560,17 @@ class PagoRepository {
             logMessage("Error al eliminar pago con archivo: " . $e->getMessage(), 'error');
             throw $e;
         }
+    }
+
+    public function getProgramacionesActivas($colegiadoId) {
+        $sql = "SELECT p.*, c.nombre_completo as concepto_nombre
+                FROM programacion_deudas p
+                INNER JOIN conceptos_pago c ON p.concepto_id = c.idConcepto
+                WHERE p.colegiado_id = :colegiado_id
+                AND p.estado = 'activa'
+                AND (p.fecha_fin IS NULL OR p.fecha_fin >= CURDATE())
+                ORDER BY c.nombre_completo";
+        
+        return $this->db->query($sql, ['colegiado_id' => $colegiadoId]);
     }
 }

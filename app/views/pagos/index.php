@@ -6,8 +6,11 @@
         </h2>
         <div>
             <?php if (hasPermission('pagos', 'crear')): ?>
-                <a href="<?php echo url('pagos/registrar'); ?>" class="btn btn-primary">
+                <a href="<?php echo url('pagos/registrar'); ?>" class="btn btn-primary me-2">
                     <i class="fas fa-plus me-1"></i> Registrar Pago
+                </a>
+                <a href="<?php echo url('pagos/registrar-adelantado'); ?>" class="btn btn-success">
+                    <i class="fas fa-calendar-check me-1"></i> Pago Adelantado
                 </a>
             <?php endif; ?>
         </div>

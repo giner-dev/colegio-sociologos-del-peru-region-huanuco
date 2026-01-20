@@ -56,18 +56,39 @@ class DeudaService {
             return ['success' => false, 'errors' => $errores];
         }
 
-        // Determinar estado según fecha de vencimiento
         $estado = $this->determinarEstado($datos['fecha_vencimiento']);
-
-        // LÓGICA PARA DEUDAS MANUALES
         $esDeudaManual = !empty($datos['es_deuda_manual']) || empty($datos['concepto_id']);
+
+        // NUEVA LÓGICA: Verificar si es concepto recurrente
+        $conceptoRecurrente = null;
+        if (!$esDeudaManual && !empty($datos['concepto_id'])) {
+            $conceptoRecurrente = $this->deudaRepository->findConceptoById($datos['concepto_id']);
+
+            // Verificar si ya existe programación activa
+            if ($conceptoRecurrente && $conceptoRecurrente['es_recurrente'] == 1) {
+                $existeProgramacion = $this->deudaRepository->existeProgramacionActiva(
+                    $datos['colegiado_id'],
+                    $datos['concepto_id']
+                );
+
+                if ($existeProgramacion) {
+                    return [
+                        'success' => false,
+                        'errors' => [
+                            'El colegiado ya tiene una programación activa para este concepto recurrente. ' .
+                            'No se puede crear una deuda duplicada.'
+                        ]
+                    ];
+                }
+            }
+        }
 
         $datosInsert = [
             'colegiado_id' => $datos['colegiado_id'],
             'concepto_id' => $esDeudaManual ? null : $datos['concepto_id'],
             'concepto_manual' => $esDeudaManual ? $datos['concepto_manual'] : null,
             'es_deuda_manual' => $esDeudaManual ? 1 : 0,
-            'descripcion_deuda' => $datos['descripcion_deuda'],
+            'descripcion_deuda' => $datos['descripcion_deuda'] ?? ($esDeudaManual ? $datos['concepto_manual'] : null),
             'monto_esperado' => $datos['monto_esperado'],
             'fecha_generacion' => date('Y-m-d'),
             'fecha_vencimiento' => $datos['fecha_vencimiento'],
@@ -75,25 +96,68 @@ class DeudaService {
                 ? $datos['fecha_maxima_pago'] 
                 : $datos['fecha_vencimiento'],
             'estado' => $estado,
-            'origen' => 'manual',
+            'origen' => $conceptoRecurrente && $conceptoRecurrente['es_recurrente'] == 1 ? 'recurrente' : 'manual',
             'usuario_generador_id' => $datos['usuario_generador_id'] ?? null,
             'observaciones' => $datos['observaciones'] ?? null
         ];
 
         try {
-            $id = $this->deudaRepository->create($datosInsert);
+            $db = Database::getInstance();
+            $db->beginTransaction();
 
-            if ($id) {
-                $this->actualizarEstadoColegiado($datos['colegiado_id']);
+            $deudaId = $this->deudaRepository->create($datosInsert);
 
-                $tipoDeuda = $esDeudaManual ? 'manual libre' : 'con concepto';
-                logMessage("Deuda registrada ($tipoDeuda): ID $id - Colegiado {$datos['colegiado_id']} - Monto {$datos['monto_esperado']}", 'info');
-                return ['success' => true, 'id' => $id];
+            if (!$deudaId) {
+                $db->rollback();
+                return ['success' => false, 'errors' => ['Error al registrar la deuda']];
             }
 
-            return ['success' => false, 'errors' => ['Error al registrar la deuda']];
+            // NUEVA LÓGICA: Si es concepto recurrente, crear programación
+            if ($conceptoRecurrente && $conceptoRecurrente['es_recurrente'] == 1) {
+                $proximaGeneracion = $this->calcularProximaFechaRecurrente(
+                    $datos['fecha_vencimiento'],
+                    $conceptoRecurrente['frecuencia']
+                );
+
+                $datosProgramacion = [
+                    'colegiado_id' => $datos['colegiado_id'],
+                    'concepto_id' => $datos['concepto_id'],
+                    'monto' => $datos['monto_esperado'],
+                    'frecuencia' => $conceptoRecurrente['frecuencia'],
+                    'dia_vencimiento' => $conceptoRecurrente['dia_vencimiento'],
+                    'fecha_inicio' => $datos['fecha_vencimiento'],
+                    'fecha_fin' => null,
+                    'ultima_generacion' => date('Y-m-d'),
+                    'proxima_generacion' => $proximaGeneracion,
+                    'usuario_registro_id' => $datos['usuario_generador_id'] ?? null,
+                    'observaciones' => 'Programación creada automáticamente al registrar deuda recurrente'
+                ];
+
+                $programacionId = $this->deudaRepository->crearProgramacion($datosProgramacion);
+
+                if (!$programacionId) {
+                    $db->rollback();
+                    return ['success' => false, 'errors' => ['Error al crear la programación de deuda recurrente']];
+                }
+
+                logMessage("Programación recurrente creada: ID $programacionId para deuda $deudaId", 'info');
+            }
+
+            $this->actualizarEstadoColegiado($datos['colegiado_id']);
+        
+            $db->commit();
+
+            $tipoDeuda = $esDeudaManual ? 'manual libre' : 
+                ($conceptoRecurrente && $conceptoRecurrente['es_recurrente'] == 1 ? 'recurrente' : 'con concepto');
+
+            logMessage("Deuda registrada ($tipoDeuda): ID $deudaId - Colegiado {$datos['colegiado_id']} - Monto {$datos['monto_esperado']}", 'info');
+
+            return ['success' => true, 'id' => $deudaId];
 
         } catch (Exception $e) {
+            if (isset($db) && $db->inTransaction()) {
+                $db->rollback();
+            }
             logMessage("Error al registrar deuda: " . $e->getMessage(), 'error');
             return ['success' => false, 'errors' => ['Error interno del sistema: ' . $e->getMessage()]];
         }
@@ -303,6 +367,27 @@ class DeudaService {
             }
         }
     }
+
+    private function calcularProximaFechaRecurrente($fechaBase, $frecuencia) {
+        $fecha = new DateTime($fechaBase);
+
+        switch($frecuencia) {
+            case 'mensual':
+                $fecha->modify('+1 month');
+                break;
+            case 'trimestral':
+                $fecha->modify('+3 months');
+                break;
+            case 'semestral':
+                $fecha->modify('+6 months');
+                break;
+            case 'anual':
+                $fecha->modify('+1 year');
+                break;
+        }
+            
+        return $fecha->format('Y-m-d');
+    }
     
     // Registrar cambio de estado automático en historial
     private function registrarCambioEstadoAutomatico($colegiadoId, $estadoAnterior, $estadoNuevo, $motivo) {
@@ -381,6 +466,10 @@ class DeudaService {
     // Obtiene conceptos para formulario
     public function obtenerConceptos() {
         return $this->deudaRepository->getConceptosActivos();
+    }
+
+    public function existeProgramacionActiva($colegiadoId, $conceptoId) {
+        return $this->deudaRepository->existeProgramacionActiva($colegiadoId, $conceptoId);
     }
 
     // Verifica si un colegiado puede recibir nuevas deudas

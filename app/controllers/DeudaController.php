@@ -190,6 +190,51 @@ class DeudaController extends Controller {
         ]);
     }
 
+    public function apiDeudasPendientesMultiples($colegiadoId) {
+        $this->requirePermission('deudas', 'ver');
+
+        $resultado = $this->deudaService->obtenerPorColegiado($colegiadoId);
+
+        if (!$resultado['colegiado']) {
+            $this->json([
+                'success' => false,
+                'message' => 'Colegiado no encontrado'
+            ], 404);
+            return;
+        }
+
+        $deudasPendientes = array_filter($resultado['deudas'], function($deuda) {
+            return $deuda->puedeSerPagada();
+        });
+
+        $deudasArray = array_map(function($deuda) {
+            return [
+                'idDeuda' => $deuda->idDeuda,
+                'concepto_nombre' => $deuda->getNombreConcepto(),
+                'descripcion_deuda' => $deuda->getDescripcionCompleta(),
+                'monto_esperado' => $deuda->monto_esperado,
+                'monto_pagado' => $deuda->monto_pagado,
+                'saldo_pendiente' => $deuda->getSaldoPendiente(),
+                'fecha_vencimiento' => $deuda->fecha_vencimiento,
+                'estado' => $deuda->estado,
+                'dias_vencimiento' => $deuda->getDiasVencimiento(),
+                'es_recurrente' => !empty($deuda->es_recurrente),
+                'frecuencia' => $deuda->frecuencia ?? null
+            ];
+        }, $deudasPendientes);
+
+        $this->json([
+            'success' => true,
+            'deudas' => array_values($deudasArray),
+            'total_pendiente' => $resultado['total'],
+            'colegiado' => [
+                'id' => $resultado['colegiado']->idColegiados,
+                'numero_colegiatura' => $resultado['colegiado']->numero_colegiatura,
+                'nombre_completo' => $resultado['colegiado']->getNombreCompleto(),
+                'dni' => $resultado['colegiado']->dni
+            ]
+        ]);
+    }
 
     // API para buscar colegiados con paginación
     public function apiColegiadosSearch() {
@@ -248,5 +293,16 @@ class DeudaController extends Controller {
                 'error' => $e->getMessage()
             ], 500);
         }
+    }
+
+    public function apiVerificarProgramacion($colegiadoId, $conceptoId) {
+        $this->requireAuth();
+        
+        $existe = $this->deudaService->existeProgramacionActiva($colegiadoId, $conceptoId);
+        
+        $this->json([
+            'success' => true,
+            'existe' => $existe
+        ]);
     }
 }

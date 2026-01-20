@@ -31,7 +31,9 @@ window.PagosModule = (function() {
         if (currentPath.includes('/pagos')) {
             console.log('💰 Inicializando módulo Pagos...');
             
-            if (currentPath.includes('/pagos/registrar')) {
+            if (currentPath.includes('/pagos/registrar-adelantado')) {
+                initRegistrarAdelantado();
+            } else if (currentPath.includes('/pagos/registrar')) {
                 initRegistrarPago();
             } else if (currentPath.includes('/pagos/ver/')) {
                 initVerPago();
@@ -734,6 +736,154 @@ window.PagosModule = (function() {
         eliminarMetodo: eliminarMetodo
     };
 })();
+
+
+function initRegistrarAdelantado() {
+    console.log('📅 Inicializando registro de pago adelantado...');
+    
+    const searchInput = document.getElementById('searchColegiado');
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase().trim();
+            filterColegiadosAdelantado(searchTerm);
+        });
+    }
+    
+    document.querySelectorAll('.btn-seleccionar-colegiado').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const colegiadoId = this.dataset.colegiadoId;
+            const nombre = this.dataset.nombre;
+            const numero = this.dataset.numero;
+            seleccionarColegiadoAdelantado(colegiadoId, nombre, numero);
+        });
+    });
+    
+    const selectProgramacion = document.getElementById('selectProgramacion');
+    const inputMeses = document.getElementById('inputMesesAdelantado');
+    
+    if (selectProgramacion && inputMeses) {
+        selectProgramacion.addEventListener('change', calcularMontoAdelantado);
+        inputMeses.addEventListener('input', calcularMontoAdelantado);
+    }
+    
+    const selectMetodo = document.getElementById('selectMetodo');
+    if (selectMetodo) {
+        selectMetodo.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const requiereComprobante = selectedOption?.dataset?.requiere === '1';
+            
+            const comprobanteRequerido = document.getElementById('comprobante-requerido');
+            const inputComprobante = document.getElementById('inputComprobante');
+            
+            if (comprobanteRequerido && inputComprobante) {
+                if (requiereComprobante) {
+                    comprobanteRequerido.style.display = 'block';
+                    inputComprobante.required = true;
+                } else {
+                    comprobanteRequerido.style.display = 'none';
+                    inputComprobante.required = false;
+                }
+            }
+        });
+    }
+}
+
+function filterColegiadosAdelantado(searchTerm) {
+    const rows = document.querySelectorAll('.colegiado-row');
+    
+    rows.forEach(row => {
+        const numero = (row.dataset.numero || '').toLowerCase();
+        const dni = (row.dataset.dni || '').toLowerCase();
+        const nombre = (row.dataset.nombre || '').toLowerCase();
+        
+        const matches = numero.includes(searchTerm) || 
+                       dni.includes(searchTerm) || 
+                       nombre.includes(searchTerm);
+        
+        row.style.display = matches || searchTerm === '' ? '' : 'none';
+    });
+}
+
+function seleccionarColegiadoAdelantado(colegiadoId, nombre, numero) {
+    console.log(`👤 Colegiado seleccionado para pago adelantado: ${numero} - ${nombre}`);
+    
+    document.getElementById('colegiadoSeleccionadoInfo').innerHTML = 
+        `<strong>${numero}</strong> - ${nombre}`;
+    
+    document.getElementById('inputColegiadoId').value = colegiadoId;
+    
+    document.getElementById('tablaColegiados').style.display = 'none';
+    document.getElementById('paso2').style.display = 'block';
+    
+    cargarProgramaciones(colegiadoId);
+    
+    document.getElementById('paso2').scrollIntoView({ behavior: 'smooth' });
+}
+
+function cargarProgramaciones(colegiadoId) {
+    const select = document.getElementById('selectProgramacion');
+    const url = getAppUrl(`pagos/api-programaciones/${colegiadoId}`);
+    
+    console.log('🔄 Cargando programaciones para colegiado', colegiadoId);
+    
+    select.innerHTML = '<option value="">Cargando...</option>';
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            console.log('✅ Programaciones cargadas:', data);
+            
+            if (data.success && data.programaciones && data.programaciones.length > 0) {
+                select.innerHTML = '<option value="">Seleccione un concepto...</option>';
+                
+                data.programaciones.forEach(prog => {
+                    const option = document.createElement('option');
+                    option.value = prog.idProgramacion;
+                    option.textContent = `${prog.concepto_nombre} (${prog.frecuencia}) - S/ ${parseFloat(prog.monto).toFixed(2)}`;
+                    option.dataset.monto = prog.monto;
+                    option.dataset.frecuencia = prog.frecuencia;
+                    select.appendChild(option);
+                });
+            } else {
+                select.innerHTML = '<option value="">No hay programaciones activas</option>';
+                showToast('Este colegiado no tiene programaciones de pago activas', 'warning');
+            }
+        })
+        .catch(error => {
+            console.error('❌ Error al cargar programaciones:', error);
+            select.innerHTML = '<option value="">Error al cargar</option>';
+            showToast('Error al cargar programaciones', 'error');
+        });
+}
+
+function calcularMontoAdelantado() {
+    const select = document.getElementById('selectProgramacion');
+    const inputMeses = document.getElementById('inputMesesAdelantado');
+    const inputMonto = document.getElementById('inputMonto');
+    const container = document.getElementById('infoCalculoContainer');
+    
+    if (!select.value || !inputMeses.value) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    const selectedOption = select.options[select.selectedIndex];
+    const montoPorPeriodo = parseFloat(selectedOption.dataset.monto || 0);
+    const meses = parseInt(inputMeses.value || 0);
+    
+    const montoTotal = montoPorPeriodo * meses;
+    
+    document.getElementById('montoPorPeriodo').textContent = montoPorPeriodo.toFixed(2);
+    document.getElementById('cantidadPeriodos').textContent = meses;
+    document.getElementById('montoTotalCalculado').textContent = montoTotal.toFixed(2);
+    
+    if (inputMonto) {
+        inputMonto.value = montoTotal.toFixed(2);
+        inputMonto.min = montoTotal.toFixed(2);
+    }
+    
+    container.style.display = 'block';
+}
 
 // ===================================
 // AUTO-INICIALIZACIÓN

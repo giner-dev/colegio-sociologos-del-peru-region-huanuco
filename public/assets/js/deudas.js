@@ -94,6 +94,7 @@ window.DeudasModule = (function() {
         const grupoFechaMaxima = document.getElementById('grupoFechaMaxima');
         const inputFechaVencimiento = document.querySelector('input[name="fecha_vencimiento"]');
         const inputFechaMaxima = document.querySelector('input[name="fecha_maxima_pago"]');
+        const inputColegiadoId = document.getElementById('colegiadoIdHidden');
         
         if (!selectConcepto) return;
         
@@ -102,36 +103,91 @@ window.DeudasModule = (function() {
             const esRecurrente = selectedOption.getAttribute('data-recurrente') === '1';
             const diaVencimiento = selectedOption.getAttribute('data-dia-vencimiento');
             const frecuencia = selectedOption.getAttribute('data-frecuencia');
-            
+            const conceptoId = this.value;
+
             if (esRecurrente && diaVencimiento) {
-                if (grupoFechaVencimiento) grupoFechaVencimiento.style.display = 'none';
-                if (grupoFechaMaxima) grupoFechaMaxima.style.display = 'none';
-                
-                const proximaFecha = calcularProximaFechaVencimiento(parseInt(diaVencimiento), frecuencia);
-                
-                if (inputFechaVencimiento) {
-                    inputFechaVencimiento.value = proximaFecha;
-                    inputFechaVencimiento.removeAttribute('required');
+                // Verificar si ya existe programación activa
+                const colegiadoId = inputColegiadoId?.value;
+
+                if (colegiadoId && conceptoId) {
+                    verificarProgramacionExistente(colegiadoId, conceptoId, function(existe) {
+                        if (existe) {
+                            if (typeof Swal !== 'undefined') {
+                                Swal.fire({
+                                    icon: 'warning',
+                                    title: 'Concepto Recurrente Ya Existe',
+                                    html: 'Este colegiado ya tiene una <strong>programación activa</strong> para este concepto recurrente.<br><br>' +
+                                          'No se puede crear una deuda duplicada. Las deudas futuras se generarán automáticamente.',
+                                    confirmButtonColor: '#B91D22',
+                                    confirmButtonText: 'Entendido'
+                                });
+                            } else {
+                                alert('ADVERTENCIA: Este colegiado ya tiene una programación activa para este concepto recurrente.');
+                            }
+
+                            selectConcepto.value = '';
+                            if (typeof $ !== 'undefined' && $.fn.select2) {
+                                $(selectConcepto).val(null).trigger('change');
+                            }
+                            return;
+                        }
+
+                        configurarConceptoRecurrente(diaVencimiento, frecuencia);
+                    });
+                } else {
+                    configurarConceptoRecurrente(diaVencimiento, frecuencia);
                 }
-                if (inputFechaMaxima) {
-                    inputFechaMaxima.value = proximaFecha;
-                }
-                
-                mostrarMensajeRecurrente(frecuencia, diaVencimiento, proximaFecha);
             } else {
-                if (grupoFechaVencimiento) grupoFechaVencimiento.style.display = 'block';
-                if (grupoFechaMaxima) grupoFechaMaxima.style.display = 'block';
-                
-                if (inputFechaVencimiento) {
-                    inputFechaVencimiento.value = '';
-                    inputFechaVencimiento.setAttribute('required', 'required');
-                }
-                if (inputFechaMaxima) {
-                    inputFechaMaxima.value = '';
-                }
-                
-                ocultarMensajeRecurrente();
+                restaurarCamposFechas();
             }
+        });
+
+        function configurarConceptoRecurrente(diaVencimiento, frecuencia) {
+            if (grupoFechaVencimiento) grupoFechaVencimiento.style.display = 'none';
+            if (grupoFechaMaxima) grupoFechaMaxima.style.display = 'none';
+
+            const proximaFecha = calcularProximaFechaVencimiento(parseInt(diaVencimiento), frecuencia);
+
+            if (inputFechaVencimiento) {
+                inputFechaVencimiento.value = proximaFecha;
+                inputFechaVencimiento.removeAttribute('required');
+            }
+            if (inputFechaMaxima) {
+                inputFechaMaxima.value = proximaFecha;
+            }
+
+            mostrarMensajeRecurrente(frecuencia, diaVencimiento, proximaFecha);
+        }
+
+        function restaurarCamposFechas() {
+            if (grupoFechaVencimiento) grupoFechaVencimiento.style.display = 'block';
+            if (grupoFechaMaxima) grupoFechaMaxima.style.display = 'block';
+
+            if (inputFechaVencimiento) {
+                inputFechaVencimiento.value = '';
+                inputFechaVencimiento.setAttribute('required', 'required');
+            }
+            if (inputFechaMaxima) {
+                inputFechaMaxima.value = '';
+            }
+
+            ocultarMensajeRecurrente();
+        }
+    }
+
+    function verificarProgramacionExistente(colegiadoId, conceptoId, callback) {
+        fetch(getAppUrl(`deudas/api-verificar-programacion/${colegiadoId}/${conceptoId}`), {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            callback(data.existe || false);
+        })
+        .catch(error => {
+            console.error('Error al verificar programación:', error);
+            callback(false);
         });
     }
     

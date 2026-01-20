@@ -512,4 +512,80 @@ class DeudaRepository {
         
         return $this->db->query($sql);
     }
+
+    // Verifica si existe programación activa para un colegiado y concepto
+    public function existeProgramacionActiva($colegiadoId, $conceptoId) {
+        $sql = "SELECT COUNT(*) as total 
+                FROM programacion_deudas 
+                WHERE colegiado_id = :colegiado_id 
+                AND concepto_id = :concepto_id 
+                AND estado = 'activa'";
+
+        $result = $this->db->queryOne($sql, [
+            'colegiado_id' => $colegiadoId,
+            'concepto_id' => $conceptoId
+        ]);
+
+        return $result['total'] > 0;
+    }
+
+    // Obtiene programación activa
+    public function getProgramacionActiva($colegiadoId, $conceptoId) {
+        $sql = "SELECT * FROM programacion_deudas 
+                WHERE colegiado_id = :colegiado_id 
+                AND concepto_id = :concepto_id 
+                AND estado = 'activa'
+                LIMIT 1";
+
+        return $this->db->queryOne($sql, [
+            'colegiado_id' => $colegiadoId,
+            'concepto_id' => $conceptoId
+        ]);
+    }
+
+    // Crea programación de deuda recurrente
+    public function crearProgramacion($data) {
+        $sql = "INSERT INTO programacion_deudas (
+                    colegiado_id,
+                    concepto_id,
+                    monto,
+                    frecuencia,
+                    dia_vencimiento,
+                    fecha_inicio,
+                    fecha_fin,
+                    estado,
+                    ultima_generacion,
+                    proxima_generacion,
+                    usuario_registro_id,
+                    observaciones
+                ) VALUES (
+                    :colegiado_id,
+                    :concepto_id,
+                    :monto,
+                    :frecuencia,
+                    :dia_vencimiento,
+                    :fecha_inicio,
+                    :fecha_fin,
+                    'activa',
+                    :ultima_generacion,
+                    :proxima_generacion,
+                    :usuario_registro_id,
+                    :observaciones
+                )";
+
+        return $this->db->insert($sql, $data);
+    }
+
+    // Actualiza próxima generación de programación
+    public function actualizarProximaGeneracion($programacionId, $proximaFecha) {
+        $sql = "UPDATE programacion_deudas 
+                SET proxima_generacion = :proxima_fecha,
+                    ultima_generacion = CURDATE()
+                WHERE idProgramacion = :id";
+
+        return $this->db->execute($sql, [
+            'proxima_fecha' => $proximaFecha,
+            'id' => $programacionId
+        ]);
+    }
 }

@@ -16,6 +16,8 @@ class Pago {
     public $usuario_confirmacion_id;
     public $fecha_registro;
     public $fecha_actualizacion;
+    public $es_pago_adelantado;
+    public $periodo_adelantado;
     
     // Propiedades del colegiado (para joins)
     public $nombres;
