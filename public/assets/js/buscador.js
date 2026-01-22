@@ -180,7 +180,7 @@ function mostrarResultadoEncontrado(colegiado) {
     headerIcon.className = 'fas fa-user-check';
     headerTitle.textContent = 'Resultado de la Búsqueda';
     
-    // MODIFICACIÓN: Determinar icono y clase según el estado
+    // Determinar icono y clase según el estado
     let iconoEstado = 'fa-times-circle';
     let claseEstado = 'inhabilitado';
     
@@ -190,6 +190,9 @@ function mostrarResultadoEncontrado(colegiado) {
     } else if (colegiado.estado === 'inactivo_cese') {
         iconoEstado = 'fa-user-slash';
         claseEstado = 'inactivo-cese';
+    } else if (colegiado.estado === 'inactivo_traslado') {
+        iconoEstado = 'fa-exchange-alt';
+        claseEstado = 'inactivo-traslado';
     }
     
     // Construir HTML del resultado
@@ -228,6 +231,19 @@ function mostrarResultadoEncontrado(colegiado) {
                 Fecha de Cese
             </div>
             <div class="result-value">${escapeHtml(colegiado.fecha_cese)}</div>
+        </div>
+        `;
+    }
+
+    // Mostrar fecha de traslado y colegio destino si existe
+    if (colegiado.fecha_traslado) {
+        htmlResultado += `
+        <div class="result-item">
+            <div class="result-label">
+                <i class="fas fa-calendar-times"></i>
+                Fecha de Traslado
+            </div>
+            <div class="result-value">${escapeHtml(colegiado.fecha_traslado)}</div>
         </div>
         `;
     }

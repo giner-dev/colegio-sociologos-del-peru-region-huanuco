@@ -49,6 +49,10 @@
                         <span class="badge badge-inactivo-cese status-badge-large">
                             <i class="fas fa-user-slash"></i> INACTIVO POR CESE
                         </span>
+                    <?php elseif ($colegiado->estado === 'inactivo_traslado'): ?>
+                        <span class="badge badge-inactivo-traslado status-badge-large">
+                            <i class="fas fa-exchange-alt"></i> INACTIVO POR TRASLADO
+                        </span>
                     <?php else: ?>
                         <span class="badge bg-danger status-badge-large">
                             <i class="fas fa-times-circle"></i> INHABILITADO
@@ -143,6 +147,30 @@
 </div>
 <?php endif; ?>
 
+<!-- ALERTA SI ESTÁ EN TRASLADO -->
+<?php if ($colegiado->isInactivoTraslado()): ?>
+<div class="alert alert-info">
+    <h5 class="alert-heading">
+        <i class="fas fa-exchange-alt me-2"></i>
+        Estado: Inactivo por Traslado
+    </h5>
+    <div class="row">
+        <div class="col-md-3">
+            <strong>Fecha de Traslado:</strong><br>
+            <?php echo $colegiado->fecha_traslado ? formatDate($colegiado->fecha_traslado) : 'No registrada'; ?>
+        </div>
+        <div class="col-md-4">
+            <strong>Colegio de Destino:</strong><br>
+            <?php echo e($colegiado->colegio_destino ?? 'No especificado'); ?>
+        </div>
+        <div class="col-md-5">
+            <strong>Motivo:</strong><br>
+            <?php echo e($colegiado->motivo_traslado ?? 'Sin motivo registrado'); ?>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
+
 <!-- Cambiar Estado -->
 <?php if (hasPermission('colegiados', 'editar')): ?>
 <div class="card mb-4">
@@ -164,13 +192,23 @@
                         <option value="inactivo_cese" <?php echo $colegiado->estado === 'inactivo_cese' ? 'selected' : ''; ?>>
                             Inactivo por Cese
                         </option>
+                        <!-- NUEVO -->
+                        <option value="inactivo_traslado" <?php echo $colegiado->estado === 'inactivo_traslado' ? 'selected' : ''; ?>>
+                            Inactivo por Traslado
+                        </option>
                     </select>
                 </div>
                 
-                <!-- Campo fecha de cese (solo visible si se selecciona inactivo_cese) -->
+                <!-- Campo fecha de cese -->
                 <div class="col-md-3" id="grupoFechaCese" style="display: none;">
                     <label class="form-label required">Fecha de Cese</label>
                     <input type="date" name="fecha_cese" id="inputFechaCese" class="form-control">
+                </div>
+                
+                <!-- Campo fecha de traslado -->
+                <div class="col-md-3" id="grupoFechaTraslado" style="display: none;">
+                    <label class="form-label required">Fecha de Traslado</label>
+                    <input type="date" name="fecha_traslado" id="inputFechaTraslado" class="form-control">
                 </div>
                 
                 <div class="col-md-4" id="colMotivo">
@@ -186,15 +224,30 @@
                 </div>
             </div>
             
+            <!-- Campo colegio de destino (solo visible para traslado) -->
+            <div class="row mt-3" id="grupoColegioDestino" style="display: none;">
+                <div class="col-md-12">
+                    <label class="form-label">Colegio de Destino</label>
+                    <input type="text" name="colegio_destino" id="inputColegioDestino" class="form-control" 
+                           placeholder="Ej: Colegio de Sociólogos de Lima">
+                </div>
+            </div>
+            
             <!-- Advertencia para inactivo_cese -->
             <div class="alert alert-warning mt-3" id="alertInactivoCese" style="display: none;">
                 <i class="fas fa-exclamation-triangle me-2"></i>
                 <strong>Advertencia:</strong> Al cambiar a "Inactivo por Cese", se pausarán todas las programaciones de deudas automáticas para este colegiado.
             </div>
             
+            <!-- Advertencia para inactivo_traslado -->
+            <div class="alert alert-info mt-3" id="alertInactivoTraslado" style="display: none;">
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Advertencia:</strong> Al cambiar a "Inactivo por Traslado", se pausarán todas las programaciones de deudas automáticas para este colegiado.
+            </div>
+            
             <!-- Info para reactivación -->
-            <?php if ($colegiado->isInactivoCese()): ?>
-            <div class="alert alert-info mt-3">
+            <?php if ($colegiado->isInactivoCese() || $colegiado->isInactivoTraslado()): ?>
+            <div class="alert alert-success mt-3">
                 <i class="fas fa-info-circle me-2"></i>
                 <strong>Nota:</strong> Al cambiar a "Habilitado" o "Inhabilitado", se reactivarán las programaciones de deudas automáticas que fueron pausadas.
             </div>
@@ -204,26 +257,44 @@
 </div>
 
 <script>
-// Mostrar/ocultar campo fecha_cese según estado seleccionado
 document.addEventListener('DOMContentLoaded', function() {
     const selectEstado = document.getElementById('selectEstado');
     const grupoFechaCese = document.getElementById('grupoFechaCese');
     const inputFechaCese = document.getElementById('inputFechaCese');
+    const grupoFechaTraslado = document.getElementById('grupoFechaTraslado');
+    const inputFechaTraslado = document.getElementById('inputFechaTraslado');
+    const grupoColegioDestino = document.getElementById('grupoColegioDestino');
+    const inputColegioDestino = document.getElementById('inputColegioDestino');
     const alertInactivoCese = document.getElementById('alertInactivoCese');
+    const alertInactivoTraslado = document.getElementById('alertInactivoTraslado');
     const colMotivo = document.getElementById('colMotivo');
     
     if (selectEstado) {
         selectEstado.addEventListener('change', function() {
+            // Ocultar todos los campos específicos
+            grupoFechaCese.style.display = 'none';
+            inputFechaCese.removeAttribute('required');
+            grupoFechaTraslado.style.display = 'none';
+            inputFechaTraslado.removeAttribute('required');
+            grupoColegioDestino.style.display = 'none';
+            inputColegioDestino.removeAttribute('required');
+            alertInactivoCese.style.display = 'none';
+            alertInactivoTraslado.style.display = 'none';
+            colMotivo.className = 'col-md-6';
+            
+            // Mostrar campos según estado seleccionado
             if (this.value === 'inactivo_cese') {
                 grupoFechaCese.style.display = 'block';
                 inputFechaCese.setAttribute('required', 'required');
                 alertInactivoCese.style.display = 'block';
                 colMotivo.className = 'col-md-4';
-            } else {
-                grupoFechaCese.style.display = 'none';
-                inputFechaCese.removeAttribute('required');
-                alertInactivoCese.style.display = 'none';
-                colMotivo.className = 'col-md-6';
+                
+            } else if (this.value === 'inactivo_traslado') {
+                grupoFechaTraslado.style.display = 'block';
+                inputFechaTraslado.setAttribute('required', 'required');
+                grupoColegioDestino.style.display = 'block';
+                alertInactivoTraslado.style.display = 'block';
+                colMotivo.className = 'col-md-4';
             }
         });
         
@@ -434,16 +505,18 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <td data-label="Estado Anterior">
                                     <span class="badge <?php 
                                         echo $cambio['estado_anterior'] === 'habilitado' ? 'bg-success' : 
-                                            ($cambio['estado_anterior'] === 'inactivo_cese' ? 'badge-inactivo-cese' : 'bg-danger'); 
+                                            ($cambio['estado_anterior'] === 'inactivo_cese' ? 'badge-inactivo-cese' : 
+                                            ($cambio['estado_anterior'] === 'inactivo_traslado' ? 'badge-inactivo-traslado' : 'bg-danger')); 
                                     ?>">
                                         <?php echo ucfirst(str_replace('_', ' ', e($cambio['estado_anterior']))); ?>
                                     </span>
                                 </td>
-                                
+                                                        
                                 <td data-label="Estado Nuevo">
                                     <span class="badge <?php 
                                         echo $cambio['estado_nuevo'] === 'habilitado' ? 'bg-success' : 
-                                            ($cambio['estado_nuevo'] === 'inactivo_cese' ? 'badge-inactivo-cese' : 'bg-danger'); 
+                                            ($cambio['estado_nuevo'] === 'inactivo_cese' ? 'badge-inactivo-cese' : 
+                                            ($cambio['estado_nuevo'] === 'inactivo_traslado' ? 'badge-inactivo-traslado' : 'bg-danger')); 
                                     ?>">
                                         <?php echo ucfirst(str_replace('_', ' ', e($cambio['estado_nuevo']))); ?>
                                     </span>

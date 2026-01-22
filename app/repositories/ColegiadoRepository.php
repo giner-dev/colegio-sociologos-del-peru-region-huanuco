@@ -265,7 +265,7 @@ class ColegiadoRepository{
     }
 
     // cambiar el estado de un colegiado
-    public function cambiarEstado($id, $nuevoEstado, $motivo = null, $fechaCese = null){
+    public function cambiarEstado($id, $nuevoEstado, $motivo = null, $fechaCese = null, $fechaTraslado = null, $colegioDestino = null){
         // Si cambia a inactivo_cese
         if ($nuevoEstado === 'inactivo_cese') {
             $sql = "UPDATE colegiados SET 
@@ -283,7 +283,26 @@ class ColegiadoRepository{
             ]);
         }
 
-        // Para habilitado/inhabilitado (lógica original)
+        // Si cambia a inactivo_traslado
+        if ($nuevoEstado === 'inactivo_traslado') {
+            $sql = "UPDATE colegiados SET 
+                    estado = :estado, 
+                    fecha_traslado = :fecha_traslado,
+                    motivo_traslado = :motivo,
+                    colegio_destino = :colegio_destino,
+                    fecha_cambio_estado = NOW() 
+                WHERE idColegiados = :id";
+
+            return $this->db->execute($sql, [
+                'id' => $id,
+                'estado' => $nuevoEstado,
+                'fecha_traslado' => $fechaTraslado,
+                'motivo' => $motivo,
+                'colegio_destino' => $colegioDestino
+            ]);
+        }
+
+        // Para habilitado/inhabilitado
         $sql = "UPDATE colegiados SET 
                 estado = :estado, 
                 motivo_inhabilitacion = :motivo,
@@ -295,6 +314,19 @@ class ColegiadoRepository{
             'estado' => $nuevoEstado,
             'motivo' => $motivo ?? null
         ]);
+    }
+
+    // Obtiene colegiados en estado traslado
+    public function findInactivosTraslado() {
+        $sql = "SELECT * FROM colegiados WHERE estado = 'inactivo_traslado' ORDER BY apellido_paterno ASC";
+        $results = $this->db->query($sql);
+
+        $colegiados = [];
+        foreach ($results as $row) {
+            $colegiados[] = new Colegiado($row);
+        }
+
+        return $colegiados;
     }
 
     // actualizar la foto de un colegiado

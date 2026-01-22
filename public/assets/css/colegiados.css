@@ -719,6 +719,11 @@
     padding: 10px 20px;
 }
 
+.badge-inactivo-traslado {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    color: white;
+}
+
 /* ===================================
    RESPONSIVE - MÓVILES (≤ 768px)
    =================================== */

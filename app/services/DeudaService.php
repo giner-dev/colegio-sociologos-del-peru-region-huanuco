@@ -69,7 +69,7 @@ class DeudaService {
         $estado = $this->determinarEstado($datos['fecha_vencimiento']);
         $esDeudaManual = !empty($datos['es_deuda_manual']) || empty($datos['concepto_id']);
 
-        // NUEVA LÓGICA: Verificar si es concepto recurrente
+        // Verificar si es concepto recurrente
         $conceptoRecurrente = null;
         if (!$esDeudaManual && !empty($datos['concepto_id'])) {
             $conceptoRecurrente = $this->deudaRepository->findConceptoById($datos['concepto_id']);
@@ -122,7 +122,7 @@ class DeudaService {
                 return ['success' => false, 'errors' => ['Error al registrar la deuda']];
             }
 
-            // NUEVA LÓGICA: Si es concepto recurrente, crear programación
+            // Si es concepto recurrente, crear programación
             if ($conceptoRecurrente && $conceptoRecurrente['es_recurrente'] == 1) {
                 $proximaGeneracion = $this->calcularProximaFechaRecurrente(
                     $datos['fecha_vencimiento'],

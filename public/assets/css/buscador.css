@@ -429,6 +429,16 @@ body {
     box-shadow: 0 4px 15px rgba(108, 117, 125, 0.3);
 }
 
+.estado-badge.inactivo-traslado {
+    background: linear-gradient(135deg, #17a2b8, #138496);
+    color: white;
+    border: 2px solid #138496;
+}
+
+.estado-badge.inactivo-traslado i {
+    color: white;
+}
+
 /* ============================================
    NO ENCONTRADO
    ============================================ */

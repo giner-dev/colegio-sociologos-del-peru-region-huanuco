@@ -16,8 +16,15 @@ class Colegiado{
     public $observaciones;
     public $fecha_registro;
     public $fecha_actualizacion;
+    
+    // Campos para cese
     public $fecha_cese;
     public $motivo_cese;
+    
+    // NUEVOS: Campos para traslado
+    public $fecha_traslado;
+    public $motivo_traslado;
+    public $colegio_destino;
 
     public function __construct($data = null){
         if(!empty($data)){
@@ -71,7 +78,12 @@ class Colegiado{
         return $this->estado === 'inactivo_cese';
     }
 
-    // Verifica si el colegiado está activo (puede generar deudas)
+    // Verificar si está inactivo por traslado
+    public function isInactivoTraslado(){
+        return $this->estado === 'inactivo_traslado';
+    }
+
+    // Incluir traslado en la lógica
     public function puedeGenerarDeudas(){
         return $this->estado === 'habilitado' || $this->estado === 'inhabilitado';
     }
@@ -100,12 +112,13 @@ class Colegiado{
         return $diff->y;
     }
 
-    // Retorna el nombre amigable del estado
+    // Incluir el nuevo estado
     public function getEstadoTexto() {
         $estados = [
             'habilitado' => 'Habilitado',
             'inhabilitado' => 'Inhabilitado',
-            'inactivo_cese' => 'Inactivo por Cese'
+            'inactivo_cese' => 'Inactivo por Cese',
+            'inactivo_traslado' => 'Inactivo por Traslado'
         ];
         return $estados[$this->estado] ?? 'Desconocido';
     }
@@ -114,7 +127,8 @@ class Colegiado{
         $clases = [
             'habilitado' => 'badge-habilitado',
             'inhabilitado' => 'badge-inhabilitado',
-            'inactivo_cese' => 'badge-inactivo-cese'
+            'inactivo_cese' => 'badge-inactivo-cese',
+            'inactivo_traslado' => 'badge-inactivo-traslado'
         ];
         return $clases[$this->estado] ?? 'badge-secondary';
     }

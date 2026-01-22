@@ -171,8 +171,12 @@
                                 <td>
                                     <?php if ($colegiado['estado'] == 'habilitado'): ?>
                                         <span class="badge bg-success">Habilitado</span>
-                                    <?php else: ?>
+                                    <?php elseif ($colegiado['estado'] == 'inhabilitado'): ?>
                                         <span class="badge bg-danger">Inhabilitado</span>
+                                    <?php elseif ($colegiado['estado'] == 'inactivo_cese'): ?>
+                                        <span class="badge badge-inactivo-cese">Inactivo por Cese</span>
+                                    <?php elseif ($colegiado['estado'] == 'inactivo_traslado'): ?>
+                                        <span class="badge badge-inactivo-traslado">Inactivo por Traslado</span>
                                     <?php endif; ?>
                                 </td>
                             </tr>

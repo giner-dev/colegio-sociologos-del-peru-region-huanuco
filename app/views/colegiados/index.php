@@ -56,6 +56,9 @@
                         <option value="inactivo_cese" <?php echo ($filtros['estado'] ?? '') === 'inactivo_cese' ? 'selected' : ''; ?>>
                             Inactivo por Cese
                         </option>
+                        <option value="inactivo_traslado" <?php echo ($filtros['estado'] ?? '') === 'inactivo_traslado' ? 'selected' : ''; ?>>
+                            Inactivo por Traslado
+                        </option>
                     </select>
                 </div>
             </div>
@@ -119,6 +122,10 @@
                                     <?php elseif ($colegiado->estado === 'inactivo_cese'): ?>
                                         <span class="badge badge-inactivo-cese">
                                             <i class="fas fa-user-slash"></i> Inactivo por Cese
+                                        </span>
+                                    <?php elseif ($colegiado->estado === 'inactivo_traslado'): ?>
+                                        <span class="badge badge-inactivo-traslado">
+                                            <i class="fas fa-exchange-alt"></i> Inactivo por Traslado
                                         </span>
                                     <?php else: ?>
                                         <span class="badge badge-inhabilitado">

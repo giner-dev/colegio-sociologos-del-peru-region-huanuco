@@ -156,13 +156,15 @@ class ReporteService {
         $offset = ($page - 1) * $perPage;
 
         // Construir WHERE dinámico según filtro
-        $whereEstado = "WHERE estado IN ('inhabilitado', 'inactivo_cese')";
+        $whereEstado = "WHERE estado IN ('inhabilitado', 'inactivo_cese', 'inactivo_traslado')";
         $params = ['limit' => $perPage, 'offset' => $offset];
 
         if ($filtroEstado === 'inhabilitado') {
             $whereEstado = "WHERE estado = 'inhabilitado'";
         } elseif ($filtroEstado === 'inactivo_cese') {
             $whereEstado = "WHERE estado = 'inactivo_cese'";
+        } elseif ($filtroEstado === 'inactivo_traslado') {
+            $whereEstado = "WHERE estado = 'inactivo_traslado'";
         }
 
         $sql = "SELECT 
@@ -176,6 +178,9 @@ class ReporteService {
                     motivo_inhabilitacion,
                     motivo_cese,
                     fecha_cese,
+                    motivo_traslado,
+                    fecha_traslado,
+                    colegio_destino,
                     fecha_cambio_estado
                 FROM colegiados
                 $whereEstado
@@ -530,14 +535,16 @@ class ReporteService {
     // EXPORTAR A EXCEL - INHABILITADOS
     public function exportarInhabilitadosExcel($filtroEstado = null) {
         // Construir WHERE dinámico
-        $whereEstado = "WHERE estado IN ('inhabilitado', 'inactivo_cese')";
-        
+        $whereEstado = "WHERE estado IN ('inhabilitado', 'inactivo_cese', 'inactivo_traslado')";
+    
         if ($filtroEstado === 'inhabilitado') {
             $whereEstado = "WHERE estado = 'inhabilitado'";
         } elseif ($filtroEstado === 'inactivo_cese') {
             $whereEstado = "WHERE estado = 'inactivo_cese'";
+        } elseif ($filtroEstado === 'inactivo_traslado') {
+            $whereEstado = "WHERE estado = 'inactivo_traslado'";
         }
-        
+    
         $sql = "SELECT 
                     numero_colegiatura,
                     dni,
@@ -549,23 +556,27 @@ class ReporteService {
                     motivo_inhabilitacion,
                     motivo_cese,
                     fecha_cese,
+                    motivo_traslado,
+                    fecha_traslado,
+                    colegio_destino,
                     fecha_cambio_estado
                 FROM colegiados
                 $whereEstado
                 ORDER BY fecha_cambio_estado DESC";
-        
+    
         $inhabilitados = $this->db->query($sql);
-        
+    
         $spreadsheet = new Spreadsheet();
         $sheet = $spreadsheet->getActiveSheet();
-        
+    
         $sheet->setTitle('Inhabilitados');
-        
-        $sheet->setCellValue('A1', 'COLEGIADOS INHABILITADOS / INACTIVOS POR CESE');
-        $sheet->mergeCells('A1:I1');
+    
+        // Cambiar título del reporte
+        $sheet->setCellValue('A1', 'COLEGIADOS INHABILITADOS / INACTIVOS POR CESE Y/O TRASLADO');
+        $sheet->mergeCells('A1:J1');
         $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(16);
         $sheet->getStyle('A1')->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        
+    
         $row = 3;
         $headers = [
             'N° Colegiatura', 
@@ -576,15 +587,16 @@ class ReporteService {
             'Fecha Colegiatura', 
             'Estado',
             'Motivo/Observación', 
+            'Colegio Destino',
             'Fecha Cambio'
         ];
         $sheet->fromArray($headers, null, 'A' . $row);
-        
-        $headerStyle = $sheet->getStyle('A' . $row . ':I' . $row);
+    
+        $headerStyle = $sheet->getStyle('A' . $row . ':J' . $row);
         $headerStyle->getFont()->setBold(true);
         $headerStyle->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('B91D22');
         $headerStyle->getFont()->getColor()->setRGB('FFFFFF');
-        
+    
         $row++;
         foreach ($inhabilitados as $colegiado) {
             $sheet->setCellValue('A' . $row, $colegiado['numero_colegiatura']);
@@ -593,14 +605,16 @@ class ReporteService {
             $sheet->setCellValue('D' . $row, $colegiado['correo'] ?? '-');
             $sheet->setCellValue('E' . $row, $colegiado['telefono'] ?? '-');
             $sheet->setCellValue('F' . $row, date('d/m/Y', strtotime($colegiado['fecha_colegiatura'])));
-            
+    
             // Determinar texto de estado
             $estadoTexto = 'Inhabilitado';
             if ($colegiado['estado'] === 'inactivo_cese') {
                 $estadoTexto = 'Inactivo por Cese';
+            } elseif ($colegiado['estado'] === 'inactivo_traslado') {
+                $estadoTexto = 'Inactivo por Traslado';
             }
             $sheet->setCellValue('G' . $row, $estadoTexto);
-            
+    
             // Determinar motivo según estado
             $motivo = '-';
             if ($colegiado['estado'] === 'inactivo_cese') {
@@ -608,29 +622,41 @@ class ReporteService {
                 if ($colegiado['fecha_cese']) {
                     $motivo .= ' (Fecha cese: ' . date('d/m/Y', strtotime($colegiado['fecha_cese'])) . ')';
                 }
+            } elseif ($colegiado['estado'] === 'inactivo_traslado') {
+                $motivo = $colegiado['motivo_traslado'] ?? '-';
+                if ($colegiado['fecha_traslado']) {
+                    $motivo .= ' (Fecha traslado: ' . date('d/m/Y', strtotime($colegiado['fecha_traslado'])) . ')';
+                }
             } else {
                 $motivo = $colegiado['motivo_inhabilitacion'] ?? '-';
             }
             $sheet->setCellValue('H' . $row, $motivo);
-            
-            $sheet->setCellValue('I' . $row, $colegiado['fecha_cambio_estado'] ? date('d/m/Y', strtotime($colegiado['fecha_cambio_estado'])) : '-');
+    
+            // Colegio destino para traslados
+            $colegioDestino = '-';
+            if ($colegiado['estado'] === 'inactivo_traslado' && $colegiado['colegio_destino']) {
+                $colegioDestino = $colegiado['colegio_destino'];
+            }
+            $sheet->setCellValue('I' . $row, $colegioDestino);
+    
+            $sheet->setCellValue('J' . $row, $colegiado['fecha_cambio_estado'] ? date('d/m/Y', strtotime($colegiado['fecha_cambio_estado'])) : '-');
             $row++;
         }
-        
-        foreach (range('A', 'I') as $col) {
+    
+        foreach (range('A', 'J') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
-        
+    
         $filename = 'colegiados_inhabilitados_' . date('Ymd_His') . '.xlsx';
         $filepath = basePath('public/temp/' . $filename);
-        
+    
         if (!is_dir(dirname($filepath))) {
             mkdir(dirname($filepath), 0777, true);
         }
-        
+    
         $writer = new Xlsx($spreadsheet);
         $writer->save($filepath);
-        
+    
         return $filename;
     }
 

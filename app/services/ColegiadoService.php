@@ -150,57 +150,56 @@ class ColegiadoService{
         return ['success' => false, 'errors' => ['Error al actualizar el colegiado']];
     }
 
-    public function cambiarEstado($id, $nuevoEstado, $motivo, $usuarioId, $fechaCese = null) {
+    public function cambiarEstado($id, $nuevoEstado, $motivo, $usuarioId, $fechaCese = null, $fechaTraslado = null, $colegioDestino = null) {
         $colegiado = $this->colegiadoRepository->findById($id);
-
+    
         if (!$colegiado) {
             return ['success' => false, 'message' => 'Colegiado no encontrado'];
         }
-
+    
         if ($colegiado->estado === $nuevoEstado) {
             return ['success' => false, 'message' => 'El colegiado ya tiene ese estado'];
         }
-
+    
         $estadoAnterior = $colegiado->estado;
-
+    
         // CASO 1: Cambiar A inactivo_cese
         if ($nuevoEstado === 'inactivo_cese') {
-            // Pausar programaciones de deudas
             $this->colegiadoRepository->pausarProgramacionesDeudas($id);
-
-            // Cambiar estado
             $this->colegiadoRepository->cambiarEstado($id, $nuevoEstado, $motivo, $fechaCese);
-
-            // Registrar en historial
             $this->registrarCambioEstado($id, $estadoAnterior, $nuevoEstado, $motivo, 'manual', $usuarioId);
-
+    
             logMessage("Colegiado ID $id cambiado a inactivo_cese - Programaciones pausadas", 'info');
-
             return ['success' => true, 'message' => 'Estado actualizado. Se pausaron las deudas automáticas.'];
         }
-
-        // CASO 2: Cambiar DESDE inactivo_cese a habilitado/inhabilitado
-        if ($estadoAnterior === 'inactivo_cese' && ($nuevoEstado === 'habilitado' || $nuevoEstado === 'inhabilitado')) {
-            // Reactivar programaciones
-            $this->colegiadoRepository->reactivarProgramacionesDeudas($id);
-
-            // Cambiar estado
-            $this->colegiadoRepository->cambiarEstado($id, $nuevoEstado, $motivo);
-
-            // Registrar en historial
+    
+        // NUEVO: CASO 2: Cambiar A inactivo_traslado
+        if ($nuevoEstado === 'inactivo_traslado') {
+            $this->colegiadoRepository->pausarProgramacionesDeudas($id);
+            $this->colegiadoRepository->cambiarEstado($id, $nuevoEstado, $motivo, null, $fechaTraslado, $colegioDestino);
             $this->registrarCambioEstado($id, $estadoAnterior, $nuevoEstado, $motivo, 'manual', $usuarioId);
-
-            logMessage("Colegiado ID $id reactivado desde inactivo_cese - Programaciones reactivadas", 'info');
-
+    
+            logMessage("Colegiado ID $id cambiado a inactivo_traslado - Programaciones pausadas", 'info');
+            return ['success' => true, 'message' => 'Estado actualizado. Se pausaron las deudas automáticas.'];
+        }
+    
+        // CASO 3: Cambiar DESDE inactivo_cese o inactivo_traslado a habilitado/inhabilitado
+        if (($estadoAnterior === 'inactivo_cese' || $estadoAnterior === 'inactivo_traslado') 
+            && ($nuevoEstado === 'habilitado' || $nuevoEstado === 'inhabilitado')) {
+            
+            $this->colegiadoRepository->reactivarProgramacionesDeudas($id);
+            $this->colegiadoRepository->cambiarEstado($id, $nuevoEstado, $motivo);
+            $this->registrarCambioEstado($id, $estadoAnterior, $nuevoEstado, $motivo, 'manual', $usuarioId);
+    
+            logMessage("Colegiado ID $id reactivado desde $estadoAnterior - Programaciones reactivadas", 'info');
             return ['success' => true, 'message' => 'Estado actualizado. Se reactivaron las deudas automáticas.'];
         }
-
-        // CASO 3: Cambio normal habilitado <-> inhabilitado (lógica original)
+    
+        // CASO 4: Cambio normal habilitado <-> inhabilitado
         $this->colegiadoRepository->cambiarEstado($id, $nuevoEstado, $motivo);
         $this->registrarCambioEstado($id, $estadoAnterior, $nuevoEstado, $motivo, 'manual', $usuarioId);
-
+    
         logMessage("Estado cambiado para colegiado ID $id: $estadoAnterior -> $nuevoEstado", 'info');
-
         return ['success' => true, 'message' => 'Estado actualizado correctamente'];
     }
 

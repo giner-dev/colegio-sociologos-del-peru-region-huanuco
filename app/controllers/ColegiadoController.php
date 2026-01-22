@@ -173,9 +173,19 @@ class ColegiadoController extends Controller{
         $nuevoEstado = $this->getPost('estado');
         $motivo = $this->getPost('motivo');
         $fechaCese = $this->getPost('fecha_cese');
+        $fechaTraslado = $this->getPost('fecha_traslado');
+        $colegioDestino = $this->getPost('colegio_destino');
         $usuarioId = authUserId();
 
-        $resultado = $this->colegiadoService->cambiarEstado($id, $nuevoEstado, $motivo, $usuarioId, $fechaCese);
+        $resultado = $this->colegiadoService->cambiarEstado(
+            $id, 
+            $nuevoEstado, 
+            $motivo, 
+            $usuarioId, 
+            $fechaCese, 
+            $fechaTraslado,
+            $colegioDestino
+        );
 
         if ($resultado['success']) {
             $this->setSuccess($resultado['message']);

@@ -80,12 +80,14 @@ class BuscadorPublicoController extends Controller {
                 return;
             }
 
-            // MODIFICACIÓN: Determinar texto de estado según el nuevo campo
+            // Determinar texto de estado según el nuevo campo
             $estadoTexto = 'NO HABILITADO';
             if ($colegiado->estado === 'habilitado') {
                 $estadoTexto = 'HABILITADO';
             } elseif ($colegiado->estado === 'inactivo_cese') {
                 $estadoTexto = 'INACTIVO POR CESE';
+            } elseif ($colegiado->estado === 'inactivo_traslado') {
+                $estadoTexto = 'INACTIVO POR TRASLADO';
             }
 
             // Preparar respuesta con datos públicos
@@ -101,7 +103,8 @@ class BuscadorPublicoController extends Controller {
                     'estado' => $colegiado->estado,
                     'estado_texto' => $estadoTexto,
                     'fecha_colegiatura' => formatDate($colegiado->fecha_colegiatura),
-                    'fecha_cese' => $colegiado->fecha_cese ? formatDate($colegiado->fecha_cese) : null
+                    'fecha_cese' => $colegiado->fecha_cese ? formatDate($colegiado->fecha_cese) : null,
+                    'fecha_traslado' => $colegiado->fecha_traslado ? formatDate($colegiado->fecha_traslado) : null
                 ]
             ];
 

@@ -3,7 +3,7 @@
         <div class="d-flex justify-content-between align-items-center">
             <h2>
                 <i class="fas fa-user-times me-2"></i>
-                Colegiados Inhabilitados / Inactivos por Cese
+                Colegiados Inhabilitados / Inactivos por Cese y/o Traslado
             </h2>
             <div>
                 <button type="button" class="btn btn-success" onclick="exportarExcel()">
@@ -34,6 +34,9 @@
                             <option value="inactivo_cese" <?php echo ($filtroEstado ?? '') === 'inactivo_cese' ? 'selected' : ''; ?>>
                                 Solo Inactivos por Cese
                             </option>
+                            <option value="inactivo_traslado" <?php echo ($filtroEstado ?? '') === 'inactivo_traslado' ? 'selected' : ''; ?>>
+                                Solo Inactivos por Traslado
+                            </option>
                         </select>
                     </div>
                     <div class="col-md-8 d-flex gap-2">
@@ -59,7 +62,9 @@
                     <?php if (!empty($filtroEstado)): ?>
                         <span class="badge bg-info ms-2">
                             <?php 
-                            echo $filtroEstado === 'inhabilitado' ? 'Solo Inhabilitados' : 'Solo Inactivos por Cese';
+                            echo $filtroEstado === 'inhabilitado' ? 'Solo Inhabilitados' : 
+                                 ($filtroEstado === 'inactivo_cese' ? 'Solo Inactivos por Cese' : 
+                                 ($filtroEstado === 'inactivo_traslado' ? 'Solo Inactivos por Traslado' : ''));
                             ?>
                         </span>
                     <?php endif; ?>
@@ -92,6 +97,7 @@
                                 <th>Estado</th>
                                 <th>Motivo/Observación</th>
                                 <th>Fecha Cambio</th>
+                                <th>Colegio Destino</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -120,6 +126,10 @@
                                                 <span class="badge bg-secondary">
                                                     <i class="fas fa-user-slash"></i> Inactivo por Cese
                                                 </span>
+                                            <?php elseif ($colegiado['estado'] === 'inactivo_traslado'): ?>
+                                                <span class="badge bg-info">
+                                                    <i class="fas fa-exchange-alt"></i> Inactivo por Traslado
+                                                </span>
                                             <?php else: ?>
                                                 <span class="badge bg-danger">
                                                     <i class="fas fa-user-times"></i> Inhabilitado
@@ -134,6 +144,13 @@
                                                         <br><strong>Fecha cese:</strong> <?php echo formatDate($colegiado['fecha_cese']); ?>
                                                     <?php endif; ?>
                                                 </small>
+                                            <?php elseif ($colegiado['estado'] === 'inactivo_traslado'): ?>
+                                                <small class="text-muted">
+                                                    <?php echo e($colegiado['motivo_traslado'] ?? '-'); ?>
+                                                    <?php if ($colegiado['fecha_traslado']): ?>
+                                                        <br><strong>Fecha traslado:</strong> <?php echo formatDate($colegiado['fecha_traslado']); ?>
+                                                    <?php endif; ?>
+                                                </small>
                                             <?php else: ?>
                                                 <small class="text-muted">
                                                     <?php echo e($colegiado['motivo_inhabilitacion'] ?? '-'); ?>
@@ -143,6 +160,13 @@
                                         <td data-label="Fecha Cambio">
                                             <?php if ($colegiado['fecha_cambio_estado']): ?>
                                                 <?php echo formatDate($colegiado['fecha_cambio_estado']); ?>
+                                            <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                            <?php endif; ?>
+                                        </td>
+                                        <td data-label="Colegio Destino">
+                                            <?php if ($colegiado['estado'] === 'inactivo_traslado' && !empty($colegiado['colegio_destino'])): ?>
+                                                <small class="text-muted"><?php echo e($colegiado['colegio_destino']); ?></small>
                                             <?php else: ?>
                                                 <span class="text-muted">-</span>
                                             <?php endif; ?>

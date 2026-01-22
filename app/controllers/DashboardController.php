@@ -35,6 +35,16 @@ class DashboardController extends Controller {
         $colegiadosInhabilitados = $db->queryOne(
             "SELECT COUNT(*) as total FROM colegiados WHERE estado = 'inhabilitado'"
         );
+
+        // Colegiados inactivos por cese
+        $colegiadosInactivoCese = $db->queryOne(
+            "SELECT COUNT(*) as total FROM colegiados WHERE estado = 'inactivo_cese'"
+        );
+
+        // Colegiados inactivos por traslado
+        $colegiadosInactivoTraslado = $db->queryOne(
+            "SELECT COUNT(*) as total FROM colegiados WHERE estado = 'inactivo_traslado'"
+        );
         
         // ✅ Total de colegiados con deudas pendientes
         $deudasPendientes = $db->queryOne(
@@ -82,6 +92,8 @@ class DashboardController extends Controller {
             'total_colegiados' => $totalColegiados['total'] ?? 0,
             'colegiados_habilitados' => $colegiadosHabilitados['total'] ?? 0,
             'colegiados_inhabilitados' => $colegiadosInhabilitados['total'] ?? 0,
+            'colegiados_inactivo_cese' => $colegiadosInactivoCese['total'] ?? 0,
+            'colegiados_inactivo_traslado' => $colegiadosInactivoTraslado['total'] ?? 0,
             'deudas_pendientes_cantidad' => $deudasPendientes['total'] ?? 0,
             'deudas_pendientes_monto' => $deudasPendientes['monto_total'] ?? 0,
             'ingresos_mes' => $ingresosMes['total'] ?? 0,
