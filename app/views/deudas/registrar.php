@@ -91,6 +91,35 @@
                 </div>
             </div>
 
+            <!--SECCIÓN: ESCOGER FECHA DE CREACIÓN DE DEUDA -->
+            <div id="seccionFechaInicio" style="display: none;">
+                <div class="alert alert-warning">
+                    <i class="fas fa-calendar-alt me-2"></i>
+                    <strong>Deuda Recurrente Detectada:</strong> Este concepto se genera automáticamente cada período.
+                    <br>
+                    Puede elegir desde qué mes/año iniciar la generación de deudas.
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label required">Fecha de Inicio de Deudas</label>
+                        <input type="date" name="fecha_inicio_personalizada" id="fechaInicioPersonalizada" class="form-control">
+                        <small class="text-muted">
+                            Se generarán todas las deudas desde esta fecha hasta el día de hoy.
+                            <br>
+                            <strong>Ejemplo:</strong> Si elige enero 2025, se crearán deudas de enero, febrero... hasta hoy.
+                        </small>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Vista Previa</label>
+                        <div id="vistaPreviaDeudas" class="alert alert-info">
+                            <small>Seleccione una fecha para ver cuántas deudas se generarán</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- SECCIÓN: DEUDA MANUAL -->
             <div id="seccionManual" style="display: none;">
                 <div class="alert alert-info">

@@ -92,8 +92,11 @@ window.DeudasModule = (function() {
         const selectConcepto = document.getElementById('selectConcepto');
         const grupoFechaVencimiento = document.getElementById('grupoFechaVencimiento');
         const grupoFechaMaxima = document.getElementById('grupoFechaMaxima');
+        const seccionFechaInicio = document.getElementById('seccionFechaInicio');
         const inputFechaVencimiento = document.querySelector('input[name="fecha_vencimiento"]');
         const inputFechaMaxima = document.querySelector('input[name="fecha_maxima_pago"]');
+        const inputFechaInicio = document.getElementById('fechaInicioPersonalizada');
+        const vistaPreviaDiv = document.getElementById('vistaPreviaDeudas');
         const inputColegiadoId = document.getElementById('colegiadoIdHidden');
         
         if (!selectConcepto) return;
@@ -104,11 +107,10 @@ window.DeudasModule = (function() {
             const diaVencimiento = selectedOption.getAttribute('data-dia-vencimiento');
             const frecuencia = selectedOption.getAttribute('data-frecuencia');
             const conceptoId = this.value;
-
+        
             if (esRecurrente && diaVencimiento) {
-                // Verificar si ya existe programación activa
                 const colegiadoId = inputColegiadoId?.value;
-
+            
                 if (colegiadoId && conceptoId) {
                     verificarProgramacionExistente(colegiadoId, conceptoId, function(existe) {
                         if (existe) {
@@ -124,30 +126,35 @@ window.DeudasModule = (function() {
                             } else {
                                 alert('ADVERTENCIA: Este colegiado ya tiene una programación activa para este concepto recurrente.');
                             }
-
+                        
                             selectConcepto.value = '';
                             if (typeof $ !== 'undefined' && $.fn.select2) {
                                 $(selectConcepto).val(null).trigger('change');
                             }
                             return;
                         }
-
-                        configurarConceptoRecurrente(diaVencimiento, frecuencia);
+                    
+                        mostrarSeccionRecurrente(diaVencimiento, frecuencia);
                     });
                 } else {
-                    configurarConceptoRecurrente(diaVencimiento, frecuencia);
+                    mostrarSeccionRecurrente(diaVencimiento, frecuencia);
                 }
             } else {
-                restaurarCamposFechas();
+                ocultarSeccionRecurrente();
             }
         });
-
-        function configurarConceptoRecurrente(diaVencimiento, frecuencia) {
+    
+        function mostrarSeccionRecurrente(diaVencimiento, frecuencia) {
+            // Ocultar campos de fecha normales
             if (grupoFechaVencimiento) grupoFechaVencimiento.style.display = 'none';
             if (grupoFechaMaxima) grupoFechaMaxima.style.display = 'none';
-
+            
+            // Mostrar sección de fecha de inicio
+            if (seccionFechaInicio) seccionFechaInicio.style.display = 'block';
+        
+            // Calcular próxima fecha de vencimiento y rellenar campos ocultos
             const proximaFecha = calcularProximaFechaVencimiento(parseInt(diaVencimiento), frecuencia);
-
+            
             if (inputFechaVencimiento) {
                 inputFechaVencimiento.value = proximaFecha;
                 inputFechaVencimiento.removeAttribute('required');
@@ -155,14 +162,23 @@ window.DeudasModule = (function() {
             if (inputFechaMaxima) {
                 inputFechaMaxima.value = proximaFecha;
             }
-
+        
+            // Configurar campo de fecha de inicio
+            configurarFechaInicio(diaVencimiento, frecuencia);
+            
+            // Mostrar mensaje informativo
             mostrarMensajeRecurrente(frecuencia, diaVencimiento, proximaFecha);
         }
-
-        function restaurarCamposFechas() {
+    
+        function ocultarSeccionRecurrente() {
+            // Mostrar campos normales
             if (grupoFechaVencimiento) grupoFechaVencimiento.style.display = 'block';
             if (grupoFechaMaxima) grupoFechaMaxima.style.display = 'block';
-
+            
+            // Ocultar sección recurrente
+            if (seccionFechaInicio) seccionFechaInicio.style.display = 'none';
+        
+            // Restaurar campos
             if (inputFechaVencimiento) {
                 inputFechaVencimiento.value = '';
                 inputFechaVencimiento.setAttribute('required', 'required');
@@ -170,8 +186,137 @@ window.DeudasModule = (function() {
             if (inputFechaMaxima) {
                 inputFechaMaxima.value = '';
             }
-
+            if (inputFechaInicio) {
+                inputFechaInicio.value = '';
+                inputFechaInicio.removeAttribute('required');
+            }
+        
             ocultarMensajeRecurrente();
+        }
+    
+        function configurarFechaInicio(diaVencimiento, frecuencia) {
+            if (!inputFechaInicio) return;
+        
+            const hoy = new Date();
+            const hace6Meses = new Date();
+            hace6Meses.setMonth(hace6Meses.getMonth() - 6);
+        
+            // Configurar fecha por defecto (hace 6 meses)
+            inputFechaInicio.value = hace6Meses.toISOString().split('T')[0];
+            inputFechaInicio.max = hoy.toISOString().split('T')[0];
+            inputFechaInicio.setAttribute('required', 'required');
+        
+            // Actualizar vista previa cuando cambie
+            inputFechaInicio.removeEventListener('change', handlerFechaInicio);
+            inputFechaInicio.addEventListener('change', handlerFechaInicio);
+        
+            function handlerFechaInicio() {
+                actualizarVistaPrevia(inputFechaInicio.value, frecuencia);
+            }
+        
+            // Vista previa inicial
+            actualizarVistaPrevia(inputFechaInicio.value, frecuencia);
+        }
+    
+        function actualizarVistaPrevia(fechaInicio, frecuencia) {
+            if (!vistaPreviaDiv || !fechaInicio) return;
+        
+            const inicio = new Date(fechaInicio + 'T00:00:00');
+            const hoy = new Date();
+            const meses = Math.ceil((hoy - inicio) / (1000 * 60 * 60 * 24 * 30));
+        
+            let cantidadDeudas = 0;
+            switch(frecuencia) {
+                case 'mensual':
+                    cantidadDeudas = Math.max(1, meses);
+                    break;
+                case 'trimestral':
+                    cantidadDeudas = Math.max(1, Math.ceil(meses / 3));
+                    break;
+                case 'semestral':
+                    cantidadDeudas = Math.max(1, Math.ceil(meses / 6));
+                    break;
+                case 'anual':
+                    cantidadDeudas = Math.max(1, Math.ceil(meses / 12));
+                    break;
+                default:
+                    cantidadDeudas = 1;
+            }
+        
+            const mesNombre = inicio.toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+            const montoTotal = cantidadDeudas * (parseFloat(document.getElementById('montoDeuda')?.value) || 0);
+        
+            vistaPreviaDiv.innerHTML = `
+                <strong>Se generarán aproximadamente ${cantidadDeudas} deuda(s)</strong>
+                <br>
+                <small>Desde ${mesNombre} hasta hoy</small>
+                ${montoTotal > 0 ? `<br><small class="text-danger">Total aprox: S/ ${montoTotal.toFixed(2)}</small>` : ''}
+            `;
+            vistaPreviaDiv.className = cantidadDeudas > 12 ? 'alert alert-warning' : 'alert alert-info';
+        }
+    
+        function calcularProximaFechaVencimiento(diaVencimiento, frecuencia) {
+            const hoy = new Date();
+            let proximaFecha = new Date();
+            
+            switch(frecuencia) {
+                case 'mensual':
+                    if (hoy.getDate() > diaVencimiento) {
+                        proximaFecha.setMonth(proximaFecha.getMonth() + 1);
+                    }
+                    break;
+                case 'trimestral':
+                    proximaFecha.setMonth(proximaFecha.getMonth() + 3);
+                    break;
+                case 'semestral':
+                    proximaFecha.setMonth(proximaFecha.getMonth() + 6);
+                    break;
+                case 'anual':
+                    proximaFecha.setFullYear(proximaFecha.getFullYear() + 1);
+                    break;
+            }
+            
+            proximaFecha.setDate(Math.min(diaVencimiento, 28));
+            return proximaFecha.toISOString().split('T')[0];
+        }
+    
+        function mostrarMensajeRecurrente(frecuencia, dia, fecha) {
+            let mensajeDiv = document.getElementById('mensajeRecurrente');
+            
+            if (!mensajeDiv) {
+                mensajeDiv = document.createElement('div');
+                mensajeDiv.id = 'mensajeRecurrente';
+                mensajeDiv.className = 'alert alert-info mt-3';
+                
+                const selectConcepto = document.getElementById('selectConcepto');
+                if (selectConcepto?.parentNode) {
+                    selectConcepto.parentNode.appendChild(mensajeDiv);
+                }
+            }
+            
+            const textoFrecuencia = {
+                'mensual': 'mensual',
+                'trimestral': 'trimestral',
+                'semestral': 'semestral',
+                'anual': 'anual'
+            };
+            
+            mensajeDiv.innerHTML = `
+                <i class="fas fa-info-circle me-2"></i>
+                <strong>Concepto Recurrente:</strong> Este concepto se genera automáticamente cada 
+                <strong>${textoFrecuencia[frecuencia] || frecuencia}</strong> el día <strong>${dia}</strong> de cada período.
+                <br>
+                <small class="text-muted">Las deudas futuras se generarán automáticamente por el sistema.</small>
+            `;
+            
+            mensajeDiv.style.display = 'block';
+        }
+        
+        function ocultarMensajeRecurrente() {
+            const mensajeDiv = document.getElementById('mensajeRecurrente');
+            if (mensajeDiv) {
+                mensajeDiv.style.display = 'none';
+            }
         }
     }
 
