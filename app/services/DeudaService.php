@@ -159,6 +159,7 @@ class DeudaService {
         $fechaActual = new DateTime($fechaInicio);
         $deudasGeneradas = 0;
         $primeraDeudaId = null;
+        $ultimaFechaGenerada = null;
 
         while ($fechaActual <= $hoy) {
             $fechaVenc = $fechaActual->format('Y-m-d');
@@ -193,13 +194,14 @@ class DeudaService {
                 $primeraDeudaId = $deudaId;
             }
 
+            $ultimaFechaGenerada = $fechaVenc;
             $deudasGeneradas++;
             logMessage("Deuda recurrente generada: ID $deudaId para periodo $periodo", 'info');
 
             $fechaActual = $this->incrementarFechaPorFrecuencia($fechaActual, $concepto['frecuencia']);
         }
 
-        $proximaGeneracion = $this->incrementarFechaPorFrecuencia(clone $fechaActual, $concepto['frecuencia']);
+        $proximaGeneracion = $fechaActual->format('Y-m-d');
 
         $datosProgramacion = [
             'colegiado_id' => $colegiadoId,
@@ -209,8 +211,8 @@ class DeudaService {
             'dia_vencimiento' => $concepto['dia_vencimiento'],
             'fecha_inicio' => $fechaInicio,
             'fecha_fin' => null,
-            'ultima_generacion' => $hoy->format('Y-m-d'),
-            'proxima_generacion' => $proximaGeneracion->format('Y-m-d'),
+            'ultima_generacion' => $ultimaFechaGenerada,
+            'proxima_generacion' => $proximaGeneracion,
             'usuario_registro_id' => $usuarioId,
             'observaciones' => "Programación creada con {$deudasGeneradas} deudas iniciales desde {$fechaInicio}"
         ];
